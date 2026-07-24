@@ -22,6 +22,9 @@
   - `engine` — `CheckEngine`(CompletableFuture 병렬 + 검사별 타임아웃 격리), `TargetIpResolver`(PTR/RBL 대상 IP: 사용자 입력 > MX A 레코드 도출)
   - `check.*` — 검사 구현체 (spf / dmarc / mx / ptr / rbl / propagation)
 - **checker-web** — Spring Boot REST API + 정적 UI. 코어 빈 조립만 담당.
+  - `GET /api/v1/diagnose?domain=...&ip=(선택)` — 진단 실행. 입력 검증은 `InputValidator`(URL 붙여넣기/IDN 허용)
+  - UI: `resources/static/index.html` (vanilla JS, 프레임워크 없음)
+  - 설정: `application.yml` — 타임아웃, RBL 활성화, 전파 검사 리졸버 목록. Spamhaus 키는 `SPAMHAUS_DQS_KEY` 환경변수
 
 ## 설계 규칙 (PRD에서 온 불변 조건)
 

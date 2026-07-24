@@ -1,0 +1,15 @@
+mailcheck:
+  dns-timeout: 3s
+  check-timeout: 12s
+  rbl:
+    spamhaus-dqs-key: ${SPAMHAUS_DQS_KEY:}
+    barracuda-enabled: true
+    spamcop-enabled: true
+  propagation-resolvers:
+    - "Google=8.8.8.8"
+    - "Cloudflare=1.1.1.1"
+    - "Quad9=9.9.9.9"
+    - "OpenDNS=208.67.222.222"
+    - "KT=168.126.63.1"
+    - "SK Broadband=219.250.36.130"
+    - "LG U+=164.124.101.2"
