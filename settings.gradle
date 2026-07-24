@@ -1,0 +1,4 @@
+rootProject.name = 'mail-server-config-checker'
+
+include 'checker-core'
+include 'checker-web'
