@@ -111,8 +111,8 @@ function render(report) {
     + '<p class="meta">' + esc(report.domain) + ' · ' + ipInfo + ' · 총 ' + report.totalElapsedMs + 'ms</p>';
 
   for (const r of report.results) {
-    // Problem cards start expanded; healthy ones stay collapsed until clicked.
-    const open = (r.status === 'FAIL' || r.status === 'ERROR') ? ' open' : '';
+    // Problem cards (WARN included) start expanded; PASS/SKIP stay collapsed until clicked.
+    const open = (r.status === 'FAIL' || r.status === 'ERROR' || r.status === 'WARN') ? ' open' : '';
     const peek = r.evidence.length ? r.evidence[0] : '';
     html += '<details class="card"' + open + '>'
       + '<summary><span class="badge" style="background:' + COLORS[r.status] + '">' + r.status + '</span>'

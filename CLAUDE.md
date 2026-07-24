@@ -23,7 +23,7 @@
   - `check.*` — 검사 구현체 (spf / dmarc / mx / ptr / rbl / propagation)
 - **checker-web** — Spring Boot REST API + 정적 UI. 코어 빈 조립만 담당.
   - `GET /api/v1/diagnose?domain=...&ip=(선택)` — 진단 실행. 입력 검증은 `InputValidator`(URL 붙여넣기/IDN 허용)
-  - UI: `resources/static/index.html` (vanilla JS, 프레임워크 없음). 검사 카드는 `<details>` 아코디언 — 기본 접힘, FAIL/ERROR만 자동 펼침
+  - UI: `resources/static/index.html` (vanilla JS, 프레임워크 없음). 검사 카드는 `<details>` 아코디언 — PASS/SKIP은 접힘, 문제 상태(FAIL/ERROR/WARN)는 자동 펼침
   - 주의: bootRun을 백그라운드로 띄웠다 중단하면 자식 java 프로세스가 고아로 남아 8080을 점유할 수 있음 — `Get-NetTCPConnection -LocalPort 8080`으로 확인 후 종료
   - 설정: `application.yml` — 타임아웃, RBL 활성화, 전파 검사 리졸버 목록. Spamhaus 키는 `SPAMHAUS_DQS_KEY` 환경변수
 
