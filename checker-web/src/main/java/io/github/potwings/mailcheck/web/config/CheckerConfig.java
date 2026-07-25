@@ -8,9 +8,14 @@ import io.github.potwings.mailcheck.check.propagation.DnsPropagationCheck;
 import io.github.potwings.mailcheck.check.propagation.ResolverEndpoint;
 import io.github.potwings.mailcheck.check.ptr.PtrCheck;
 import io.github.potwings.mailcheck.check.rbl.BarracudaProvider;
+import io.github.potwings.mailcheck.check.rbl.DomainRblCheck;
+import io.github.potwings.mailcheck.check.rbl.HostkarmaProvider;
+import io.github.potwings.mailcheck.check.rbl.MailspikeProvider;
+import io.github.potwings.mailcheck.check.rbl.PsblProvider;
 import io.github.potwings.mailcheck.check.rbl.RblCheck;
 import io.github.potwings.mailcheck.check.rbl.RblProvider;
 import io.github.potwings.mailcheck.check.rbl.SpamCopProvider;
+import io.github.potwings.mailcheck.check.rbl.SpamhausDblProvider;
 import io.github.potwings.mailcheck.check.rbl.SpamhausZenDqsProvider;
 import io.github.potwings.mailcheck.check.spf.SpfCheck;
 import io.github.potwings.mailcheck.dns.DnsJavaQueryService;
@@ -67,8 +72,16 @@ public class CheckerConfig {
         List<RblProvider> providers = List.of(
                 new SpamhausZenDqsProvider(props.rbl().spamhausDqsKey()),
                 new BarracudaProvider(props.rbl().barracudaEnabled()),
-                new SpamCopProvider(props.rbl().spamcopEnabled()));
+                new SpamCopProvider(props.rbl().spamcopEnabled()),
+                new PsblProvider(props.rbl().psblEnabled()),
+                new MailspikeProvider(props.rbl().mailspikeEnabled()),
+                new HostkarmaProvider(props.rbl().hostkarmaEnabled()));
         return new RblCheck(dns, providers);
+    }
+
+    @Bean
+    public DomainRblCheck domainRblCheck(DnsQueryService dns, MailcheckProperties props) {
+        return new DomainRblCheck(dns, List.of(new SpamhausDblProvider(props.rbl().spamhausDqsKey())));
     }
 
     @Bean

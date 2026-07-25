@@ -5,6 +5,9 @@ mailcheck:
     spamhaus-dqs-key: ${SPAMHAUS_DQS_KEY:}
     barracuda-enabled: true
     spamcop-enabled: true
+    psbl-enabled: true
+    mailspike-enabled: true
+    hostkarma-enabled: true
   propagation-resolvers:
     - "Google=8.8.8.8"
     - "Cloudflare=1.1.1.1"

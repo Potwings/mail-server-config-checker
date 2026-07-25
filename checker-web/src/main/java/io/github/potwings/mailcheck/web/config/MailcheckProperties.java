@@ -12,6 +12,7 @@ public record MailcheckProperties(
         Rbl rbl,
         List<String> propagationResolvers) {
 
-    public record Rbl(String spamhausDqsKey, boolean barracudaEnabled, boolean spamcopEnabled) {
+    public record Rbl(String spamhausDqsKey, boolean barracudaEnabled, boolean spamcopEnabled,
+                      boolean psblEnabled, boolean mailspikeEnabled, boolean hostkarmaEnabled) {
     }
 }

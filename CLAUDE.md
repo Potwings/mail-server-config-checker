@@ -20,7 +20,9 @@
   - `api` — `Check`(검사 단위 인터페이스), `CheckResult`(PASS/WARN/FAIL/SKIP/ERROR + evidence + guidance), `CheckContext`
   - `dns` — `DnsQueryService`(dnsjava 추상화 — 검사 코드는 dnsjava를 직접 만지지 않음, 테스트는 이걸 mock), `DnsJavaQueryService`(리졸버 지정 쿼리 지원)
   - `engine` — `CheckEngine`(CompletableFuture 병렬 + 검사별 타임아웃 격리), `TargetIpResolver`(PTR/RBL 대상 IP **목록**: 사용자 입력(다중) > 최우선 MX의 A 레코드 전부)
-  - `check.*` — 검사 구현체 (spf / dmarc / mx / ptr / rbl / propagation)
+  - `check.*` — 검사 구현체 (spf / dmarc / mx / ptr / rbl / domain-rbl / propagation)
+    - IP RBL 존: Spamhaus ZEN(DQS), Barracuda, SpamCop, PSBL, Mailspike, Hostkarma — Hostkarma는 white(1)/yellow(3)/NOBL(5) 코드가 "미등재", black(2)/brown(4)만 등재
+    - 도메인 RBL: `DomainRblCheck` + `DomainRblProvider`(Spamhaus DBL — ZEN과 동일 DQS 키 재사용, `127.0.1.x` 매핑, `127.0.1.255`·`127.255.255.x`는 오류 코드)
 - **checker-web** — Spring Boot REST API + 정적 UI. 코어 빈 조립만 담당.
   - `GET /api/v1/diagnose?domain=...&ip=(선택)` — 진단 실행. `ip`는 쉼표 구분 다중 입력 가능(최대 20개 — Spamhaus DQS 쿼터/쿼리 증폭 방어용 상한, 중복 제거). 입력 검증은 `InputValidator`(URL 붙여넣기/IDN 허용)
   - UI: `resources/static/index.html` (vanilla JS, 프레임워크 없음). 검사 카드는 `<details>` 아코디언 — PASS/SKIP은 접힘, 문제 상태(FAIL/ERROR/WARN)는 자동 펼침
@@ -31,7 +33,7 @@
 ## 설계 규칙 (PRD에서 온 불변 조건)
 
 - 검사 추가 = `Check` 구현체 추가만으로 끝나야 함
-- RBL은 `RblProvider` 인터페이스 경유 — 소스 교체/상업 전환 대비, 첫 커밋부터 유지
+- RBL은 `RblProvider` 인터페이스 경유 — 소스 교체/상업 전환 대비, 첫 커밋부터 유지. 도메인 RBL도 동일하게 `DomainRblProvider` 경유
 - **RBL 응답 해석 시 오류 코드(Spamhaus 127.255.255.x)를 "미등재"로 절대 오판하지 말 것**
 - Spamhaus는 DQS 키 필수, 키 없으면 SKIP + 발급 안내 (키는 절대 응답 evidence에 노출 금지 — 쿼리명에 키가 포함되므로 `provider.name()`만 evidence에 사용)
 - DMARC는 조직 도메인 폴백(RFC 7489 §6.6.3, Guava PSL) 필수
