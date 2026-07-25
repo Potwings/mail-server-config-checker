@@ -56,6 +56,11 @@ public class SpamhausZenDqsProvider implements RblProvider {
     }
 
     @Override
+    public boolean supportsIpv6() {
+        return true;
+    }
+
+    @Override
     public RblVerdict interpret(DnsAnswer answer) {
         if (answer.isNxDomain()) {
             return RblVerdict.notListed();

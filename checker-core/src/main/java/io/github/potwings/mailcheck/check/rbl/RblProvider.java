@@ -19,8 +19,13 @@ public interface RblProvider {
         return "비활성화됨";
     }
 
-    /** Full query FQDN for a reversed IPv4 (e.g. "4.3.2.1" for 1.2.3.4). */
+    /** Full query FQDN for a reversed IP (IPv4 octets "4.3.2.1", IPv6 nibbles "1.0....2"). */
     String queryName(String reversedIp);
+
+    /** True when the zone also lists IPv6 addresses (nibble-format queries). */
+    default boolean supportsIpv6() {
+        return false;
+    }
 
     /** Maps the DNS answer for {@link #queryName} to a verdict. */
     RblVerdict interpret(DnsAnswer answer);

@@ -7,11 +7,12 @@ import io.github.potwings.mailcheck.dns.RecordType;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * Decides which IPs the PTR/RBL checks target: user-supplied IPs win; otherwise
- * every A record of the best-priority MX host. Stage-1 limitation (checking the
- * inbound MX IPs, not the actual outbound IPs) is surfaced via the source label.
+ * every A/AAAA record of the best-priority MX host. Stage-1 limitation (checking
+ * the inbound MX IPs, not the actual outbound IPs) is surfaced via the source label.
  */
 public class TargetIpResolver {
 
@@ -51,11 +52,16 @@ public class TargetIpResolver {
         }
 
         DnsAnswer a = dns.query(bestHost.get(), RecordType.A);
-        if (a.failed() || !a.hasRecords()) {
+        DnsAnswer aaaa = dns.query(bestHost.get(), RecordType.AAAA);
+        List<String> ips = Stream.concat(
+                        a.failed() ? Stream.<String>empty() : a.values().stream(),
+                        aaaa.failed() ? Stream.<String>empty() : aaaa.values().stream())
+                .distinct()
+                .toList();
+        if (ips.isEmpty()) {
             return Optional.empty();
         }
-        List<String> ips = a.values().stream().distinct().toList();
-        return Optional.of(new TargetIps(ips, "MX(" + bestHost.get() + ")의 A 레코드에서 도출"));
+        return Optional.of(new TargetIps(ips, "MX(" + bestHost.get() + ")의 A/AAAA 레코드에서 도출"));
     }
 
     private record MxEntry(int pref, String host) {

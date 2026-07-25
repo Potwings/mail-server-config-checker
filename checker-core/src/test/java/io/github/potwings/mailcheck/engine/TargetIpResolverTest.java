@@ -115,6 +115,28 @@ class TargetIpResolverTest {
     }
 
     @Test
+    void MX_호스트의_AAAA_레코드도_대상에_포함된다() {
+        when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("10 mx1.example.com"));
+        when(dns.query("mx1.example.com", RecordType.A)).thenReturn(answer("203.0.113.10"));
+        when(dns.query("mx1.example.com", RecordType.AAAA)).thenReturn(answer("2001:db8::10"));
+
+        Optional<TargetIpResolver.TargetIps> result = resolver.resolve(DOMAIN, null);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().ips()).containsExactly("203.0.113.10", "2001:db8::10");
+        assertThat(result.get().source()).contains("A/AAAA");
+    }
+
+    @Test
+    void AAAA만_있는_MX_호스트도_대상이_된다() {
+        when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("10 mx1.example.com"));
+        when(dns.query("mx1.example.com", RecordType.AAAA)).thenReturn(answer("2001:db8::10"));
+
+        assertThat(resolver.resolve(DOMAIN, null)).map(TargetIpResolver.TargetIps::ips)
+                .contains(List.of("2001:db8::10"));
+    }
+
+    @Test
     void Null_MX는_후보에서_제외된다() {
         when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("0 .", "10 mx1.example.com"));
         when(dns.query("mx1.example.com", RecordType.A)).thenReturn(answer("203.0.113.10"));

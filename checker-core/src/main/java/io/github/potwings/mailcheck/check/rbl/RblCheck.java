@@ -1,5 +1,6 @@
 package io.github.potwings.mailcheck.check.rbl;
 
+import com.google.common.net.InetAddresses;
 import io.github.potwings.mailcheck.api.Check;
 import io.github.potwings.mailcheck.api.CheckContext;
 import io.github.potwings.mailcheck.api.CheckResult;
@@ -47,31 +48,37 @@ public class RblCheck implements Check {
                     .build();
         }
         List<String> ips = ctx.targetIps();
-        List<String> v4 = ips.stream().filter(ip -> !ip.contains(":")).toList();
-        if (v4.isEmpty()) {
-            return b.status(CheckStatus.SKIP)
-                    .evidence("IPv6 주소 — 1단계에서는 IPv4 RBL만 지원")
-                    .build();
-        }
         b.evidence("검사 대상 IP: " + String.join(", ", ips) + " (" + ctx.targetIpSource() + ")");
-        ips.stream().filter(ip -> ip.contains(":"))
-                .forEach(ip -> b.evidence("[" + ip + "] IPv6 주소 — RBL 검사에서 제외 (1단계에서는 IPv4만 지원)"));
 
         // Disabled providers are reported once, not per IP.
         providers.stream().filter(p -> !p.enabled())
                 .forEach(p -> b.evidence(p.name() + ": 건너뜀 — " + p.disabledReason()));
         List<RblProvider> active = providers.stream().filter(RblProvider::enabled).toList();
 
+        // IPv6 targets are only queried against zones that list IPv6 (nibble format).
+        List<String> v6Incapable = active.stream()
+                .filter(p -> !p.supportsIpv6())
+                .map(RblProvider::name)
+                .toList();
+        ips.stream().filter(ip -> ip.contains(":"))
+                .filter(ip -> !v6Incapable.isEmpty())
+                .forEach(ip -> b.evidence("[" + ip + "] IPv6 주소 — IPv6 미지원 존에서 제외: "
+                        + String.join(", ", v6Incapable)));
+
         // Prefix evidence with the IP only when there are several, so single-IP output stays clean.
-        boolean multi = v4.size() > 1;
+        boolean multi = ips.size() > 1;
 
         record Outcome(String ip, RblProvider provider, RblVerdict verdict) {
         }
 
         List<CompletableFuture<Outcome>> futures = new ArrayList<>();
-        for (String ip : v4) {
-            String reversed = reverseOctets(ip);
+        for (String ip : ips) {
+            boolean ipv6 = ip.contains(":");
+            String reversed = ipv6 ? reverseNibbles(ip) : reverseOctets(ip);
             for (RblProvider p : active) {
+                if (ipv6 && !p.supportsIpv6()) {
+                    continue;
+                }
                 futures.add(CompletableFuture.supplyAsync(
                         () -> new Outcome(ip, p, p.interpret(dns.query(p.queryName(reversed), RecordType.A)))));
             }
@@ -110,5 +117,19 @@ public class RblCheck implements Check {
     static String reverseOctets(String ipv4) {
         String[] o = ipv4.split("\\.");
         return o[3] + "." + o[2] + "." + o[1] + "." + o[0];
+    }
+
+    /** Nibble-reversed IPv6 (RFC 3596 ip6.arpa order) — e.g. 2001:db8::1 → "1.0.0....8.b.d.0.1.0.0.2". */
+    static String reverseNibbles(String ipv6) {
+        byte[] bytes = InetAddresses.forString(ipv6).getAddress();
+        StringBuilder sb = new StringBuilder(63);
+        for (int i = bytes.length - 1; i >= 0; i--) {
+            int v = bytes[i] & 0xff;
+            sb.append(Character.forDigit(v & 0xf, 16)).append('.').append(Character.forDigit(v >>> 4, 16));
+            if (i > 0) {
+                sb.append('.');
+            }
+        }
+        return sb.toString();
     }
 }

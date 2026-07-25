@@ -100,12 +100,33 @@ class RblCheckTest {
     }
 
     @Test
-    void IPv6는_SKIP() {
+    void IPv6만_있고_IPv6_지원_존이_없으면_SKIP() {
         RblCheck check = new RblCheck(dns, List.of(new SpamCopProvider(true)));
 
         CheckResult r = run(check, "2001:db8::1");
 
         assertThat(r.status()).isEqualTo(CheckStatus.SKIP);
+    }
+
+    @Test
+    void IPv6_nibble_역순_변환() {
+        assertThat(RblCheck.reverseNibbles("2001:db8::1"))
+                .isEqualTo("1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2");
+    }
+
+    @Test
+    void IPv6는_지원하는_존에서만_조회된다() {
+        String nibbles = RblCheck.reverseNibbles("2001:db8::1");
+        when(dns.query(nibbles + ".key123.zen.dq.spamhaus.net", RecordType.A))
+                .thenReturn(DnsAnswer.of(DnsRcode.NXDOMAIN));
+        RblCheck check = new RblCheck(dns,
+                List.of(new SpamhausZenDqsProvider("key123"), new SpamCopProvider(true)));
+
+        CheckResult r = run(check, "2001:db8::1");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.PASS);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("Spamhaus ZEN (DQS): 미등재"));
+        assertThat(r.evidence()).anyMatch(e -> e.contains("SpamCop") && e.contains("IPv6"));
     }
 
     @Test
