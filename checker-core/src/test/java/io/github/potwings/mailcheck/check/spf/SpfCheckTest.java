@@ -167,4 +167,53 @@ class SpfCheckTest {
 
         assertThat(run().status()).isEqualTo(CheckStatus.FAIL);
     }
+
+    // ---- 사용자 입력 IP에 대한 check_host() 평가 ----
+
+    private CheckResult runWithUserIps(String... ips) {
+        return check.run(new CheckContext(DOMAIN, java.util.List.of(ips), "사용자 입력", true));
+    }
+
+    @Test
+    void 사용자_IP가_SPF에_허용되면_PASS() {
+        when(dns.query(DOMAIN, RecordType.TXT)).thenReturn(txt("v=spf1 ip4:203.0.113.0/24 -all"));
+
+        CheckResult r = runWithUserIps("203.0.113.5");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.PASS);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("평가: pass"));
+    }
+
+    @Test
+    void 사용자_IP가_SPF에_없으면_FAIL과_추가_안내() {
+        when(dns.query(DOMAIN, RecordType.TXT)).thenReturn(txt("v=spf1 ip4:203.0.113.5 ~all"));
+
+        CheckResult r = runWithUserIps("198.51.100.9");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.FAIL);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("softfail"));
+        assertThat(r.guidance()).anyMatch(g -> g.contains("ip4:<IP>"));
+    }
+
+    @Test
+    void 다중_IP는_worst_of_집계와_IP_태그() {
+        when(dns.query(DOMAIN, RecordType.TXT)).thenReturn(txt("v=spf1 ip4:203.0.113.5 -all"));
+
+        CheckResult r = runWithUserIps("203.0.113.5", "198.51.100.9");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.FAIL);
+        assertThat(r.evidence()).anyMatch(e -> e.equals("[203.0.113.5] 발신 IP 평가: pass (매칭: ip4:203.0.113.5)"));
+        assertThat(r.evidence()).anyMatch(e -> e.startsWith("[198.51.100.9] 발신 IP 평가: fail"));
+    }
+
+    @Test
+    void MX_도출_IP는_SPF_평가에_사용하지_않음() {
+        when(dns.query(DOMAIN, RecordType.TXT)).thenReturn(txt("v=spf1 ip4:203.0.113.5 -all"));
+
+        CheckResult r = check.run(new CheckContext(DOMAIN,
+                java.util.List.of("192.0.2.1"), "MX(mx1)의 A 레코드에서 도출", false));
+
+        assertThat(r.status()).isEqualTo(CheckStatus.PASS);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("발신 서버 IP를 입력하면"));
+    }
 }

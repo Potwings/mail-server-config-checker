@@ -11,20 +11,24 @@ import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
- * Static (record-level) SPF validation per RFC 7208. Session-dependent evaluation
- * (actual pass/fail for a connecting IP) belongs to stage 2.
+ * SPF validation per RFC 7208: record-level lint always, plus check_host()
+ * evaluation of the user-declared sending IPs when they were entered. MX-derived
+ * IPs are inbound addresses, so they are never evaluated against SPF.
  */
 public class SpfCheck implements Check {
 
     private final DnsQueryService dns;
     private final SpfRecordParser parser = new SpfRecordParser();
     private final SpfLookupCounter counter;
+    private final SpfEvaluator evaluator;
 
     public SpfCheck(DnsQueryService dns) {
         this.dns = dns;
         this.counter = new SpfLookupCounter(dns);
+        this.evaluator = new SpfEvaluator(dns);
     }
 
     @Override
@@ -92,8 +96,52 @@ public class SpfCheck implements Check {
 
         evaluateTerminalPolicy(parsed.terms(), b);
 
-        b.evidence("※ 정적 린트 결과 — 실제 발신 IP 기준 pass/fail 평가는 2단계 실메일 모드에서 수행");
+        if (count.fatal() == null) {
+            evaluateSenderIps(ctx, parsed.terms(), b);
+        }
         return b.build();
+    }
+
+    /** check_host() per user-supplied sending IP; worst-of aggregation, guidance once. */
+    private void evaluateSenderIps(CheckContext ctx, List<SpfTerm> terms, CheckResult.Builder b) {
+        if (!ctx.hasTargetIps() || !ctx.ipsUserProvided()) {
+            b.evidence("※ 발신 서버 IP를 입력하면 해당 IP가 SPF에 허용되는지(check_host)까지 평가합니다");
+            return;
+        }
+
+        List<String> ips = ctx.targetIps();
+        boolean anyNotAuthorized = false;
+        boolean anyPermerror = false;
+        for (String ip : ips) {
+            // Prefix evidence with the IP only when there are several; the label then
+            // drops the IP so it is not printed twice on the same line.
+            String tag = ips.size() > 1 ? "[" + ip + "] " : "";
+            String label = tag.isEmpty() ? "발신 IP " + ip + " 평가: " : "발신 IP 평가: ";
+            SpfEvaluator.Evaluation ev = evaluator.evaluate(ip, ctx.domain(), terms);
+            ev.notes().forEach(n -> b.evidence(tag + n));
+            String matched = ev.matched() == null ? "" : " (매칭: " + ev.matched() + ")";
+            switch (ev.verdict()) {
+                case PASS -> b.evidence(tag + label + "pass" + matched);
+                case FAIL, SOFTFAIL, NEUTRAL -> {
+                    anyNotAuthorized = true;
+                    b.atLeast(CheckStatus.FAIL).evidence(tag + label
+                            + ev.verdict().name().toLowerCase(Locale.ROOT)
+                            + " — 이 IP는 SPF 허용 목록에 포함되지 않음" + matched);
+                }
+                case PERMERROR -> {
+                    anyPermerror = true;
+                    b.atLeast(CheckStatus.FAIL).evidence(tag + label + "permerror" + matched);
+                }
+                case TEMPERROR -> b.atLeast(CheckStatus.ERROR)
+                        .evidence(tag + label + "temperror — DNS 조회 실패" + matched);
+            }
+        }
+        if (anyNotAuthorized) {
+            b.guidance("발신 서버 IP가 SPF에 허용되어 있지 않습니다 — 레코드에 \"ip4:<IP>\"(IPv6는 ip6:)를 추가하거나 해당 IP를 포함하는 include를 사용하세요");
+        }
+        if (anyPermerror) {
+            b.guidance("permerror는 수신 서버가 SPF 전체를 무효 처리하는 상태입니다 — evidence의 원인을 수정하세요");
+        }
     }
 
     private void evaluateTerminalPolicy(List<SpfTerm> terms, CheckResult.Builder b) {

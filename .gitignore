@@ -6,6 +6,9 @@ build/
 application-local.yml
 application-local.properties
 
+# Claude Code 로컬 작업 디렉터리 (worktree 등)
+.claude/
+
 # IDE
 .idea/
 *.iml

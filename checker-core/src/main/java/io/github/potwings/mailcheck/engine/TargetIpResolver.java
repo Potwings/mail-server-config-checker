@@ -15,7 +15,7 @@ import java.util.Optional;
  */
 public class TargetIpResolver {
 
-    public record TargetIps(List<String> ips, String source) {
+    public record TargetIps(List<String> ips, String source, boolean userProvided) {
     }
 
     private final DnsQueryService dns;
@@ -32,7 +32,7 @@ public class TargetIpResolver {
                     .distinct()
                     .toList();
             if (!cleaned.isEmpty()) {
-                return Optional.of(new TargetIps(cleaned, "사용자 입력"));
+                return Optional.of(new TargetIps(cleaned, "사용자 입력", true));
             }
         }
 
@@ -55,7 +55,7 @@ public class TargetIpResolver {
             return Optional.empty();
         }
         List<String> ips = a.values().stream().distinct().toList();
-        return Optional.of(new TargetIps(ips, "MX(" + bestHost.get() + ")의 A 레코드에서 도출"));
+        return Optional.of(new TargetIps(ips, "MX(" + bestHost.get() + ")의 A 레코드에서 도출", false));
     }
 
     private record MxEntry(int pref, String host) {

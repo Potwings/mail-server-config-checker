@@ -1,7 +1,7 @@
 # mail-server-config-checker
 
 도메인 입력만으로 SPF / DMARC / PTR(FCrDNS) / RBL / MX / DNS 전파를 한 번에 진단하는 메일 서버 설정 점검 도구.
-기준 문서: PRD v1.2 (`C:\Users\ygk07\Downloads\mail-health-check-prd.md`) — **DKIM은 1단계 범위에서 제외**(2단계 실메일 모드 전담).
+기준 문서: PRD v1.3 (저장소 루트 `mail-health-check-prd.md`) — **DKIM은 1단계 범위에서 제외**(2단계 실메일 모드 전담). SPF의 발신 IP 기준 check_host 평가는 1단계 소관(2026-07-26 범위 이동).
 
 ## 빌드 / 실행 / 테스트
 
@@ -21,6 +21,7 @@
   - `dns` — `DnsQueryService`(dnsjava 추상화 — 검사 코드는 dnsjava를 직접 만지지 않음, 테스트는 이걸 mock), `DnsJavaQueryService`(리졸버 지정 쿼리 지원)
   - `engine` — `CheckEngine`(CompletableFuture 병렬 + 검사별 타임아웃 격리), `TargetIpResolver`(PTR/RBL 대상 IP **목록**: 사용자 입력(다중) > 최우선 MX의 A 레코드 전부)
   - `check.*` — 검사 구현체 (spf / dmarc / mx / ptr / rbl / domain-rbl / propagation)
+    - SPF: 레코드 린트(`SpfRecordParser`+`SpfLookupCounter`)는 항상 수행, **사용자가 발신 IP를 입력한 경우에만** `SpfEvaluator`가 RFC 7208 `check_host()` 평가 추가(미허용 IP = FAIL). MX 도출 IP는 수신용이라 SPF 평가에 쓰지 않음(`CheckContext.ipsUserProvided` 플래그로 구분). 세션 전용 매크로(`%{h}` 등)가 든 메커니즘만 평가 제외, `%{s}`/`%{l}`/`%{o}`는 합성 발신자 postmaster@도메인으로 확장
     - IP RBL 존: Spamhaus ZEN(DQS), Barracuda, SpamCop, PSBL, Mailspike, Hostkarma — Hostkarma는 white(1)/yellow(3)/NOBL(5) 코드가 "미등재", black(2)/brown(4)만 등재
     - 도메인 RBL: `DomainRblCheck` + `DomainRblProvider`(Spamhaus DBL — ZEN과 동일 DQS 키 재사용, `127.0.1.x` 매핑, `127.0.1.255`·`127.255.255.x`는 오류 코드)
 - **checker-web** — Spring Boot REST API + 정적 UI. 코어 빈 조립만 담당.

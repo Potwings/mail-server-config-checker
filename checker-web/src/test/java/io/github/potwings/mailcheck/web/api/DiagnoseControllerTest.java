@@ -39,7 +39,7 @@ class DiagnoseControllerTest {
     @Test
     void 정상_도메인은_진단_결과를_반환한다() throws Exception {
         when(targetIpResolver.resolve(eq("example.com"), eq(List.of())))
-                .thenReturn(Optional.of(new TargetIpResolver.TargetIps(List.of("203.0.113.5"), "MX(mx1)의 A 레코드에서 도출")));
+                .thenReturn(Optional.of(new TargetIpResolver.TargetIps(List.of("203.0.113.5"), "MX(mx1)의 A 레코드에서 도출", false)));
         CheckResult spf = CheckResult.builder("spf", "SPF").status(CheckStatus.PASS).evidence("ok").build();
         when(engine.diagnose(any(CheckContext.class)))
                 .thenReturn(new DiagnosisReport("example.com", List.of("203.0.113.5"), "MX(mx1)의 A 레코드에서 도출",
@@ -57,7 +57,7 @@ class DiagnoseControllerTest {
     void 쉼표로_구분한_다중_IP는_리스트로_전달된다() throws Exception {
         when(targetIpResolver.resolve(eq("example.com"), eq(List.of("203.0.113.5", "203.0.113.6"))))
                 .thenReturn(Optional.of(new TargetIpResolver.TargetIps(
-                        List.of("203.0.113.5", "203.0.113.6"), "사용자 입력")));
+                        List.of("203.0.113.5", "203.0.113.6"), "사용자 입력", true)));
         when(engine.diagnose(any(CheckContext.class)))
                 .thenReturn(new DiagnosisReport("example.com", List.of("203.0.113.5", "203.0.113.6"),
                         "사용자 입력", 1234, List.of()));

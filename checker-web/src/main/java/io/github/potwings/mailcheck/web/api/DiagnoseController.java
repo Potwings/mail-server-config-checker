@@ -30,7 +30,7 @@ public class DiagnoseController {
         List<String> normalizedIps = InputValidator.normalizeIps(ip);
 
         CheckContext ctx = targetIpResolver.resolve(normalizedDomain, normalizedIps)
-                .map(t -> new CheckContext(normalizedDomain, t.ips(), t.source()))
+                .map(t -> new CheckContext(normalizedDomain, t.ips(), t.source(), t.userProvided()))
                 .orElseGet(() -> new CheckContext(normalizedDomain, List.of(), null));
         return engine.diagnose(ctx);
     }
