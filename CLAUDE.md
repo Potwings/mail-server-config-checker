@@ -19,10 +19,10 @@
 - **checker-core** — 검사 엔진. 웹 레이어와 완전 분리(재사용 전제). Spring 의존성 없음.
   - `api` — `Check`(검사 단위 인터페이스), `CheckResult`(PASS/WARN/FAIL/SKIP/ERROR + evidence + guidance), `CheckContext`
   - `dns` — `DnsQueryService`(dnsjava 추상화 — 검사 코드는 dnsjava를 직접 만지지 않음, 테스트는 이걸 mock), `DnsJavaQueryService`(리졸버 지정 쿼리 지원)
-  - `engine` — `CheckEngine`(CompletableFuture 병렬 + 검사별 타임아웃 격리), `TargetIpResolver`(PTR/RBL 대상 IP: 사용자 입력 > MX A 레코드 도출)
+  - `engine` — `CheckEngine`(CompletableFuture 병렬 + 검사별 타임아웃 격리), `TargetIpResolver`(PTR/RBL 대상 IP **목록**: 사용자 입력(다중) > 최우선 MX의 A 레코드 전부)
   - `check.*` — 검사 구현체 (spf / dmarc / mx / ptr / rbl / propagation)
 - **checker-web** — Spring Boot REST API + 정적 UI. 코어 빈 조립만 담당.
-  - `GET /api/v1/diagnose?domain=...&ip=(선택)` — 진단 실행. 입력 검증은 `InputValidator`(URL 붙여넣기/IDN 허용)
+  - `GET /api/v1/diagnose?domain=...&ip=(선택)` — 진단 실행. `ip`는 쉼표 구분 다중 입력 가능(최대 20개 — Spamhaus DQS 쿼터/쿼리 증폭 방어용 상한, 중복 제거). 입력 검증은 `InputValidator`(URL 붙여넣기/IDN 허용)
   - UI: `resources/static/index.html` (vanilla JS, 프레임워크 없음). 검사 카드는 `<details>` 아코디언 — PASS/SKIP은 접힘, 문제 상태(FAIL/ERROR/WARN)는 자동 펼침
   - 주의: bootRun을 백그라운드로 띄웠다 중단하면 자식 java 프로세스가 고아로 남아 8080을 점유할 수 있음 — `Get-NetTCPConnection -LocalPort 8080`으로 확인 후 종료
   - 설정: `application.yml` — 타임아웃, RBL 활성화, 전파 검사 리졸버 목록
@@ -36,6 +36,7 @@
 - Spamhaus는 DQS 키 필수, 키 없으면 SKIP + 발급 안내 (키는 절대 응답 evidence에 노출 금지 — 쿼리명에 키가 포함되므로 `provider.name()`만 evidence에 사용)
 - DMARC는 조직 도메인 폴백(RFC 7489 §6.6.3, Guava PSL) 필수
 - 검사 코드는 `DnsQueryService`만 사용 (단위 테스트에서 네트워크 금지)
+- PTR/RBL은 다중 대상 IP를 지원 — 검사 카드는 1개 유지, IP별 결과는 evidence에 나열(다중일 때만 `[ip]` 태그), 상태는 worst-of 집계, guidance는 실패 유형별 1회만
 
 ## 커밋 규칙 (사용자 전역 규칙)
 

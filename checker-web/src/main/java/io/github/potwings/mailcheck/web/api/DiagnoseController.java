@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1")
 public class DiagnoseController {
@@ -25,11 +27,11 @@ public class DiagnoseController {
     public DiagnosisReport diagnose(@RequestParam String domain,
                                     @RequestParam(required = false) String ip) {
         String normalizedDomain = InputValidator.normalizeDomain(domain);
-        String normalizedIp = InputValidator.normalizeIp(ip);
+        List<String> normalizedIps = InputValidator.normalizeIps(ip);
 
-        CheckContext ctx = targetIpResolver.resolve(normalizedDomain, normalizedIp)
-                .map(t -> new CheckContext(normalizedDomain, t.ip(), t.source()))
-                .orElseGet(() -> new CheckContext(normalizedDomain, null, null));
+        CheckContext ctx = targetIpResolver.resolve(normalizedDomain, normalizedIps)
+                .map(t -> new CheckContext(normalizedDomain, t.ips(), t.source()))
+                .orElseGet(() -> new CheckContext(normalizedDomain, List.of(), null));
         return engine.diagnose(ctx);
     }
 }

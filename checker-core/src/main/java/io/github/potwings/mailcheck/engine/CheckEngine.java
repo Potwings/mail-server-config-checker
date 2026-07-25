@@ -38,7 +38,7 @@ public class CheckEngine {
 
         List<CheckResult> results = futures.stream().map(CompletableFuture::join).toList();
         long totalMs = (System.nanoTime() - start) / 1_000_000;
-        return new DiagnosisReport(ctx.domain(), ctx.targetIp(), ctx.targetIpSource(), totalMs, results);
+        return new DiagnosisReport(ctx.domain(), ctx.targetIps(), ctx.targetIpSource(), totalMs, results);
     }
 
     private CheckResult runTimed(Check check, CheckContext ctx) {

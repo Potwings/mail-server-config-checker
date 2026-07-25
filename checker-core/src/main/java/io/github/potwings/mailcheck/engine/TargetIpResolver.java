@@ -5,16 +5,17 @@ import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 
 /**
- * Decides which IP the PTR/RBL checks target: user-supplied IP wins; otherwise
- * the A record of the best-priority MX host. Stage-1 limitation (checking the
- * inbound MX IP, not the actual outbound IP) is surfaced via the source label.
+ * Decides which IPs the PTR/RBL checks target: user-supplied IPs win; otherwise
+ * every A record of the best-priority MX host. Stage-1 limitation (checking the
+ * inbound MX IPs, not the actual outbound IPs) is surfaced via the source label.
  */
 public class TargetIpResolver {
 
-    public record TargetIp(String ip, String source) {
+    public record TargetIps(List<String> ips, String source) {
     }
 
     private final DnsQueryService dns;
@@ -23,9 +24,16 @@ public class TargetIpResolver {
         this.dns = dns;
     }
 
-    public Optional<TargetIp> resolve(String domain, String ipOverride) {
-        if (ipOverride != null && !ipOverride.isBlank()) {
-            return Optional.of(new TargetIp(ipOverride.trim(), "사용자 입력"));
+    public Optional<TargetIps> resolve(String domain, List<String> ipOverrides) {
+        if (ipOverrides != null) {
+            List<String> cleaned = ipOverrides.stream()
+                    .filter(ip -> ip != null && !ip.isBlank())
+                    .map(String::trim)
+                    .distinct()
+                    .toList();
+            if (!cleaned.isEmpty()) {
+                return Optional.of(new TargetIps(cleaned, "사용자 입력"));
+            }
         }
 
         DnsAnswer mx = dns.query(domain, RecordType.MX);
@@ -46,7 +54,8 @@ public class TargetIpResolver {
         if (a.failed() || !a.hasRecords()) {
             return Optional.empty();
         }
-        return Optional.of(new TargetIp(a.values().get(0), "MX(" + bestHost.get() + ")의 A 레코드에서 도출"));
+        List<String> ips = a.values().stream().distinct().toList();
+        return Optional.of(new TargetIps(ips, "MX(" + bestHost.get() + ")의 A 레코드에서 도출"));
     }
 
     private record MxEntry(int pref, String host) {

@@ -5,6 +5,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.net.IDN;
 import java.net.InetAddress;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,11 +43,32 @@ final class InputValidator {
         return d;
     }
 
-    /** Returns null for blank input; validates IPv4/IPv6 literal otherwise. */
-    static String normalizeIp(String raw) {
+    // Generous ceiling: covers real outbound IP pools while capping RBL query
+    // amplification (providers × IPs per request — Spamhaus DQS quota).
+    static final int MAX_TARGET_IPS = 20;
+
+    /**
+     * Returns an empty list for blank input; otherwise splits on commas and
+     * validates each IPv4/IPv6 literal. Duplicates are removed, order kept.
+     */
+    static List<String> normalizeIps(String raw) {
         if (raw == null || raw.isBlank()) {
-            return null;
+            return List.of();
         }
+        List<String> ips = Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .map(InputValidator::normalizeIp)
+                .toList();
+        if (ips.size() > MAX_TARGET_IPS) {
+            throw bad("IP는 최대 " + MAX_TARGET_IPS + "개까지 입력할 수 있습니다 (입력됨: " + ips.size() + "개)");
+        }
+        return ips;
+    }
+
+    /** Validates a single IPv4/IPv6 literal. */
+    private static String normalizeIp(String raw) {
         String ip = raw.trim();
         Matcher v4 = IPV4.matcher(ip);
         if (v4.matches()) {

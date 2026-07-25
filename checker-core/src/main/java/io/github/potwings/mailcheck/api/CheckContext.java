@@ -1,15 +1,21 @@
 package io.github.potwings.mailcheck.api;
 
+import java.util.List;
+
 /**
  * Input for a diagnosis run.
  *
  * @param domain         normalized (punycode, lowercase) target domain
- * @param targetIp       IP used by PTR/RBL checks; null when it could not be determined
- * @param targetIpSource human-readable origin of targetIp (user input vs. derived from MX)
+ * @param targetIps      IPs used by PTR/RBL checks; empty when none could be determined
+ * @param targetIpSource human-readable origin of targetIps (user input vs. derived from MX)
  */
-public record CheckContext(String domain, String targetIp, String targetIpSource) {
+public record CheckContext(String domain, List<String> targetIps, String targetIpSource) {
 
-    public boolean hasTargetIp() {
-        return targetIp != null && !targetIp.isBlank();
+    public CheckContext {
+        targetIps = targetIps == null ? List.of() : List.copyOf(targetIps);
+    }
+
+    public boolean hasTargetIps() {
+        return !targetIps.isEmpty();
     }
 }

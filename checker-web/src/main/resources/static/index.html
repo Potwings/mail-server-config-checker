@@ -51,10 +51,10 @@
 
   <form id="form">
     <input id="domain" placeholder="도메인 (예: example.com)" required autocomplete="off">
-    <input id="ip" placeholder="발신 IP (선택)" autocomplete="off">
+    <input id="ip" placeholder="발신 IP (선택, 쉼표로 여러 개)" autocomplete="off">
     <button id="go" type="submit">진단</button>
   </form>
-  <p class="hint">IP를 비우면 MX 호스트의 A 레코드에서 도출한 수신 서버 IP로 PTR/RBL을 검사합니다 (발신 전용 IP가 분리된 환경이라면 직접 입력).</p>
+  <p class="hint">IP를 비우면 MX 호스트의 A 레코드에서 도출한 수신 서버 IP로 PTR/RBL을 검사합니다. 발신 전용 IP가 분리된 환경(IP 풀 등)이라면 실제 발신 IP를 쉼표로 구분해 최대 20개까지 직접 입력하세요.</p>
 
   <div id="out"></div>
 </div>
@@ -103,8 +103,8 @@ function render(report) {
     .map(([s, n]) => '<span class="chip"><b style="color:' + COLORS[s] + '">' + s + '</b> ' + n + '</span>')
     .join('');
 
-  const ipInfo = report.targetIp
-    ? 'PTR/RBL 대상 IP: ' + esc(report.targetIp) + ' — ' + esc(report.targetIpSource)
+  const ipInfo = report.targetIps && report.targetIps.length
+    ? 'PTR/RBL 대상 IP: ' + esc(report.targetIps.join(', ')) + ' — ' + esc(report.targetIpSource)
     : 'PTR/RBL 대상 IP 확인 불가';
 
   let html = '<div class="summary">' + chips + '</div>'
