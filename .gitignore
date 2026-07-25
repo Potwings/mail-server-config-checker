@@ -2,6 +2,10 @@
 .gradle/
 build/
 
+# 로컬 전용 설정 (Spamhaus DQS 키 등 비밀값) — .example 템플릿만 커밋
+application-local.yml
+application-local.properties
+
 # IDE
 .idea/
 *.iml

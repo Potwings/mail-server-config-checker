@@ -32,10 +32,23 @@ curl "http://localhost:8080/api/v1/diagnose?domain=example.com&ip=203.0.113.5"
 
 ### Spamhaus DQS 키 (권장)
 
-Spamhaus는 공용 리졸버 경유 조회를 차단하므로 [무료 DQS 키](https://www.spamhaus.com/free-trial/)를 발급받아 설정해야 ZEN 조회가 동작합니다:
+Spamhaus는 공용 리졸버 경유 조회를 차단하므로 [무료 DQS 키](https://www.spamhaus.com/free-trial/)를 발급받아 설정해야 ZEN 조회가 동작합니다. 키가 없으면 Spamhaus 항목은 SKIP + 발급 안내로 표시됩니다(미등재로 오판하지 않음).
+
+**로컬 개발 — `application-local.yml` (권장)**
 
 ```bash
-SPAMHAUS_DQS_KEY=your-key ./gradlew :checker-web:bootRun
+cp checker-web/src/main/resources/application-local.yml.example \
+   checker-web/src/main/resources/application-local.yml
+# 파일을 열어 spamhaus-dqs-key 에 발급받은 키를 입력
+./gradlew :checker-web:bootRun    # bootRun 은 기본으로 local 프로필 활성화
+```
+
+`application-local.yml` 은 `.gitignore` 대상이라 키가 커밋되지 않습니다.
+
+**배포 환경 — 환경변수**
+
+```bash
+SPAMHAUS_DQS_KEY=your-key java -jar checker-web.jar
 ```
 
 Barracuda는 조회에 사용하는 DNS 서버 IP의 [무료 등록](https://barracudacentral.org/account/register)이 필요합니다.

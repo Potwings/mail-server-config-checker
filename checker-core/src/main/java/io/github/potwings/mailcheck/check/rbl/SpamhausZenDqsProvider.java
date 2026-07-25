@@ -45,7 +45,8 @@ public class SpamhausZenDqsProvider implements RblProvider {
 
     @Override
     public String disabledReason() {
-        return "DQS 키 미설정 — 무료 키 발급(https://www.spamhaus.com/free-trial/) 후 SPAMHAUS_DQS_KEY 환경변수로 설정하세요. "
+        return "DQS 키 미설정 — 무료 키 발급(https://www.spamhaus.com/free-trial/) 후 "
+                + "SPAMHAUS_DQS_KEY 환경변수 또는 application-local.yml의 mailcheck.rbl.spamhaus-dqs-key로 설정하세요. "
                 + "공용 리졸버 경유 zen.spamhaus.org 조회는 차단되어 오판을 유발하므로 지원하지 않습니다";
     }
 

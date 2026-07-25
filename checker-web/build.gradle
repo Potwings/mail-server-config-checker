@@ -3,6 +3,13 @@ plugins {
     id 'io.spring.dependency-management'
 }
 
+// 로컬 실행은 application-local.yml(gitignore 대상)의 비밀값을 자동 적용.
+// 다른 프로필로 띄우려면: ./gradlew :checker-web:bootRun -Dspring.profiles.active=prod
+bootRun {
+    systemProperty 'spring.profiles.active',
+            System.getProperty('spring.profiles.active', 'local')
+}
+
 dependencies {
     implementation project(':checker-core')
     implementation 'org.springframework.boot:spring-boot-starter-web'

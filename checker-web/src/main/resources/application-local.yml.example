@@ -1,0 +1,8 @@
+# 이 파일을 application-local.yml 로 복사한 뒤 실제 키를 채우세요.
+# application-local.yml 은 .gitignore 대상이라 커밋되지 않습니다.
+# bootRun 은 기본으로 local 프로필을 활성화합니다.
+
+mailcheck:
+  rbl:
+    # https://www.spamhaus.com/free-trial/ 에서 무료 발급
+    spamhaus-dqs-key: "your-dqs-key-here"
