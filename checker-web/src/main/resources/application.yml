@@ -1,6 +1,7 @@
 mailcheck:
   dns-timeout: 3s
   check-timeout: 12s
+  mta-sts-http-timeout: 5s
   rbl:
     spamhaus-dqs-key: ${SPAMHAUS_DQS_KEY:}
     barracuda-enabled: true

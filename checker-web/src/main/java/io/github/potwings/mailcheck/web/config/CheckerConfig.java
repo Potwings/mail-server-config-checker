@@ -18,6 +18,8 @@ import io.github.potwings.mailcheck.check.rbl.SpamCopProvider;
 import io.github.potwings.mailcheck.check.rbl.SpamhausDblProvider;
 import io.github.potwings.mailcheck.check.rbl.SpamhausZenDqsProvider;
 import io.github.potwings.mailcheck.check.spf.SpfCheck;
+import io.github.potwings.mailcheck.check.tlspolicy.HttpPolicyFetcher;
+import io.github.potwings.mailcheck.check.tlspolicy.TlsPolicyCheck;
 import io.github.potwings.mailcheck.dns.DnsJavaQueryService;
 import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.engine.CheckEngine;
@@ -25,6 +27,7 @@ import io.github.potwings.mailcheck.engine.TargetIpResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -82,6 +85,12 @@ public class CheckerConfig {
     @Bean
     public DomainRblCheck domainRblCheck(DnsQueryService dns, MailcheckProperties props) {
         return new DomainRblCheck(dns, List.of(new SpamhausDblProvider(props.rbl().spamhausDqsKey())));
+    }
+
+    @Bean
+    public TlsPolicyCheck tlsPolicyCheck(DnsQueryService dns, MailcheckProperties props) {
+        Duration timeout = props.mtaStsHttpTimeout() != null ? props.mtaStsHttpTimeout() : Duration.ofSeconds(5);
+        return new TlsPolicyCheck(dns, new HttpPolicyFetcher(timeout));
     }
 
     @Bean
