@@ -9,7 +9,10 @@ import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * PTR existence + Forward-Confirmed reverse DNS: PTR → hostname → A/AAAA must
@@ -51,6 +54,7 @@ public class PtrCheck implements Check {
         boolean anyMissingPtr = false;
         boolean anyMultiPtr = false;
         boolean anyFcrdnsFail = false;
+        boolean anyGeneric = false;
         for (String ip : ips) {
             // Prefix evidence with the IP only when there are several, so single-IP output stays clean.
             String tag = ips.size() > 1 ? "[" + ip + "] " : "";
@@ -72,6 +76,13 @@ public class PtrCheck implements Check {
                 anyMultiPtr = true;
                 b.atLeast(CheckStatus.WARN)
                         .evidence(tag + "PTR 레코드가 " + hosts.size() + "개 — 일부 수신 서버는 다중 PTR을 불신함");
+            }
+
+            List<String> generic = hosts.stream().filter(h -> looksGeneric(h, ip)).toList();
+            if (!generic.isEmpty()) {
+                anyGeneric = true;
+                b.atLeast(CheckStatus.WARN)
+                        .evidence(tag + "PTR 호스트명이 ISP 기본(제네릭/동적) 패턴으로 보임: " + String.join(", ", generic));
             }
 
             boolean ipv6 = ip.contains(":");
@@ -104,8 +115,38 @@ public class PtrCheck implements Check {
         if (anyFcrdnsFail) {
             b.guidance("PTR이 가리키는 호스트명의 A/AAAA 레코드가 원래 IP로 되돌아오도록 정/역방향을 맞추세요 (FCrDNS)");
         }
+        if (anyGeneric) {
+            b.guidance("제네릭/동적 패턴의 PTR은 FCrDNS가 성립해도 다수 수신 서버가 스팸 신호로 취급합니다 — "
+                    + "mail.<도메인> 형태의 전용 호스트명으로 역방향 DNS를 변경하세요");
+        }
 
         b.evidence("※ HELO/EHLO 명과 PTR 일치 여부는 SMTP 세션이 필요해 2단계(실메일 모드)에서 검사");
         return b.build();
+    }
+
+    private static final Set<String> GENERIC_TOKENS = Set.of(
+            "dynamic", "dyn", "dhcp", "pool", "ppp", "pppoe", "dsl", "adsl", "dialup", "cable");
+
+    /** Heuristic for ISP-default reverse names: generic keywords, or the IP's octets embedded in order. */
+    static boolean looksGeneric(String host, String ip) {
+        List<String> tokens = Arrays.stream(host.toLowerCase(Locale.ROOT).split("[.\\-_]"))
+                .map(t -> t.replaceFirst("^0+(?=.)", "")) // "090" → "90" 형태의 제로 패딩 무시
+                .toList();
+        if (tokens.stream().anyMatch(GENERIC_TOKENS::contains)) {
+            return true;
+        }
+        if (ip.contains(":")) {
+            return false;
+        }
+        String[] o = ip.split("\\.");
+        List<String> fwd = List.of(o[0], o[1], o[2], o[3]);
+        List<String> rev = List.of(o[3], o[2], o[1], o[0]);
+        for (int i = 0; i + 4 <= tokens.size(); i++) {
+            List<String> window = tokens.subList(i, i + 4);
+            if (window.equals(fwd) || window.equals(rev)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

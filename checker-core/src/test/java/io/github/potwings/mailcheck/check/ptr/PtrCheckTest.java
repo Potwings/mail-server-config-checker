@@ -138,6 +138,27 @@ class PtrCheckTest {
     }
 
     @Test
+    void 제네릭_동적_패턴_PTR은_FCrDNS가_성립해도_WARN() {
+        when(dns.query(IP, RecordType.PTR)).thenReturn(answer("203-0-113-5.dynamic.isp.example"));
+        when(dns.query("203-0-113-5.dynamic.isp.example", RecordType.A)).thenReturn(answer(IP));
+
+        CheckResult r = run(IP);
+
+        assertThat(r.status()).isEqualTo(CheckStatus.WARN);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("제네릭"));
+        assertThat(r.guidance()).anyMatch(g -> g.contains("전용 호스트명"));
+    }
+
+    @Test
+    void 제네릭_판정_IP_옥텟_포함_및_키워드() {
+        assertThat(PtrCheck.looksGeneric("203-0-113-5.static.isp.example", IP)).isTrue();   // 정방향 옥텟
+        assertThat(PtrCheck.looksGeneric("5.113.0.203.rev.isp.example", IP)).isTrue();      // 역순 옥텟
+        assertThat(PtrCheck.looksGeneric("host.pool.isp.example", IP)).isTrue();            // 키워드 토큰
+        assertThat(PtrCheck.looksGeneric("mail.example.com", IP)).isFalse();                // 전용 호스트명
+        assertThat(PtrCheck.looksGeneric("dyndns-gw.example.com", IP)).isFalse();           // 부분 문자열은 미판정
+    }
+
+    @Test
     void 단일_IP면_증거에_IP_태그를_붙이지_않는다() {
         when(dns.query(IP, RecordType.PTR)).thenReturn(answer("mail.example.com"));
         when(dns.query("mail.example.com", RecordType.A)).thenReturn(answer(IP));
