@@ -137,6 +137,23 @@ class TargetIpResolverTest {
     }
 
     @Test
+    void MX에서_도출된_사설_IP는_대상에서_제외된다() {
+        when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("10 mx1.example.com"));
+        when(dns.query("mx1.example.com", RecordType.A)).thenReturn(answer("192.168.0.10", "203.0.113.10"));
+
+        assertThat(resolver.resolve(DOMAIN, null)).map(TargetIpResolver.TargetIps::ips)
+                .contains(List.of("203.0.113.10"));
+    }
+
+    @Test
+    void MX가_사설_IP로만_해석되면_대상_IP를_찾지_못한다() {
+        when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("10 mx1.example.com"));
+        when(dns.query("mx1.example.com", RecordType.A)).thenReturn(answer("192.168.0.10"));
+
+        assertThat(resolver.resolve(DOMAIN, null)).isEmpty();
+    }
+
+    @Test
     void Null_MX는_후보에서_제외된다() {
         when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("0 .", "10 mx1.example.com"));
         when(dns.query("mx1.example.com", RecordType.A)).thenReturn(answer("203.0.113.10"));

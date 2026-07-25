@@ -111,4 +111,38 @@ class MxCheckTest {
 
         assertThat(run().status()).isEqualTo(CheckStatus.WARN);
     }
+
+    @Test
+    void MX가_IP_리터럴이면_WARN_및_RFC_위반_명시() {
+        when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("10 203.0.113.10"));
+
+        CheckResult r = run();
+
+        assertThat(r.status()).isEqualTo(CheckStatus.WARN);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("IP 리터럴"));
+        assertThat(r.guidance()).anyMatch(g -> g.contains("호스트명"));
+    }
+
+    @Test
+    void 모든_MX가_사설_IP로만_해석되면_FAIL() {
+        when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("10 mx1.example.com"));
+        when(dns.query("mx1.example.com", RecordType.A)).thenReturn(answer("192.168.0.10"));
+
+        CheckResult r = run();
+
+        assertThat(r.status()).isEqualTo(CheckStatus.FAIL);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("공인 IP가 아님"));
+    }
+
+    @Test
+    void 일부_MX만_사설_IP면_WARN() {
+        when(dns.query(DOMAIN, RecordType.MX)).thenReturn(answer("10 mx1.example.com", "20 mx2.example.com"));
+        when(dns.query("mx1.example.com", RecordType.A)).thenReturn(answer("203.0.113.10"));
+        when(dns.query("mx2.example.com", RecordType.A)).thenReturn(answer("10.0.0.10"));
+
+        CheckResult r = run();
+
+        assertThat(r.status()).isEqualTo(CheckStatus.WARN);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("10.0.0.10") && e.contains("공인 IP가 아님"));
+    }
 }

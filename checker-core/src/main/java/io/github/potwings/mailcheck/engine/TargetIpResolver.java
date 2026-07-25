@@ -3,6 +3,7 @@ package io.github.potwings.mailcheck.engine;
 import io.github.potwings.mailcheck.dns.DnsAnswer;
 import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
+import io.github.potwings.mailcheck.net.IpRanges;
 
 import java.util.Comparator;
 import java.util.List;
@@ -53,10 +54,12 @@ public class TargetIpResolver {
 
         DnsAnswer a = dns.query(bestHost.get(), RecordType.A);
         DnsAnswer aaaa = dns.query(bestHost.get(), RecordType.AAAA);
+        // Private/reserved MX IPs are useless (and misleading) as PTR/RBL targets — drop them.
         List<String> ips = Stream.concat(
                         a.failed() ? Stream.<String>empty() : a.values().stream(),
                         aaaa.failed() ? Stream.<String>empty() : aaaa.values().stream())
                 .distinct()
+                .filter(ip -> IpRanges.nonRoutableReason(ip) == null)
                 .toList();
         if (ips.isEmpty()) {
             return Optional.empty();

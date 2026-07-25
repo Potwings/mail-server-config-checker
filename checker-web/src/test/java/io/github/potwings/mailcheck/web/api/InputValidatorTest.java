@@ -76,7 +76,7 @@ class InputValidatorTest {
     @Test
     void IP_개수가_상한_이내면_모두_허용된다() {
         String ips = IntStream.rangeClosed(1, InputValidator.MAX_TARGET_IPS)
-                .mapToObj(i -> "10.0.0." + i)
+                .mapToObj(i -> "203.0.113." + i)
                 .collect(Collectors.joining(","));
 
         assertThat(InputValidator.normalizeIps(ips)).hasSize(InputValidator.MAX_TARGET_IPS);
@@ -85,10 +85,27 @@ class InputValidatorTest {
     @Test
     void IP_개수_상한을_초과하면_400() {
         String ips = IntStream.rangeClosed(1, InputValidator.MAX_TARGET_IPS + 1)
-                .mapToObj(i -> "10.0.0." + i)
+                .mapToObj(i -> "203.0.113." + i)
                 .collect(Collectors.joining(","));
 
         assertThatThrownBy(() -> InputValidator.normalizeIps(ips))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void 사설_예약_IP는_400과_함께_사유를_안내한다() {
+        assertThatThrownBy(() -> InputValidator.normalizeIps("192.168.1.1"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("공인 IP가 아닙니다");
+        assertThatThrownBy(() -> InputValidator.normalizeIps("10.0.0.1"))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> InputValidator.normalizeIps("127.0.0.1"))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> InputValidator.normalizeIps("100.64.0.1"))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> InputValidator.normalizeIps("fe80::1"))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> InputValidator.normalizeIps("::1"))
                 .isInstanceOf(ResponseStatusException.class);
     }
 }

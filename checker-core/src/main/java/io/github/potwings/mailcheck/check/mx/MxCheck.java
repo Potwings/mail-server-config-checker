@@ -1,5 +1,6 @@
 package io.github.potwings.mailcheck.check.mx;
 
+import com.google.common.net.InetAddresses;
 import io.github.potwings.mailcheck.api.Check;
 import io.github.potwings.mailcheck.api.CheckContext;
 import io.github.potwings.mailcheck.api.CheckResult;
@@ -7,6 +8,7 @@ import io.github.potwings.mailcheck.api.CheckStatus;
 import io.github.potwings.mailcheck.dns.DnsAnswer;
 import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
+import io.github.potwings.mailcheck.net.IpRanges;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -85,7 +87,17 @@ public class MxCheck implements Check {
         }
 
         int unresolved = 0;
+        int resolvedIpCount = 0;
+        int nonRoutableCount = 0;
+        boolean anyIpLiteralMx = false;
         for (MxEntry e : entries) {
+            if (InetAddresses.isInetAddress(e.host())) {
+                anyIpLiteralMx = true;
+                b.atLeast(CheckStatus.WARN)
+                        .evidence("MX " + e.pref() + " " + e.host() + " — 호스트명이 아닌 IP 리터럴 (RFC 5321 §5.1 위반)");
+                continue;
+            }
+
             DnsAnswer cname = dns.query(e.host(), RecordType.CNAME);
             if (cname.hasRecords()) {
                 b.atLeast(CheckStatus.WARN)
@@ -103,6 +115,15 @@ public class MxCheck implements Check {
                 b.evidence("MX " + e.pref() + " " + e.host() + " → A/AAAA 해석 불가");
             } else {
                 b.evidence("MX " + e.pref() + " " + e.host() + " → " + String.join(", ", ips));
+                for (String ip : ips) {
+                    resolvedIpCount++;
+                    String reason = IpRanges.nonRoutableReason(ip);
+                    if (reason != null) {
+                        nonRoutableCount++;
+                        b.atLeast(CheckStatus.WARN)
+                                .evidence("MX " + e.host() + " 의 " + ip + " 는 공인 IP가 아님 — " + reason);
+                    }
+                }
             }
         }
 
@@ -112,6 +133,19 @@ public class MxCheck implements Check {
         } else if (unresolved > 0) {
             b.atLeast(CheckStatus.WARN)
                     .guidance("해석되지 않는 MX 호스트를 제거하거나 A/AAAA 레코드를 추가하세요");
+        }
+
+        if (anyIpLiteralMx) {
+            b.guidance("MX 대상은 A/AAAA 레코드를 가진 호스트명이어야 합니다 — IP 리터럴 대신 호스트명을 지정하세요");
+        }
+        if (nonRoutableCount > 0) {
+            if (nonRoutableCount == resolvedIpCount) {
+                b.status(CheckStatus.FAIL)
+                        .guidance("모든 MX가 사설/예약 IP로만 해석되어 인터넷에서 메일을 수신할 수 없습니다 — "
+                                + "내부용(스플릿 DNS) 존이 외부에 노출된 구성인지 확인하세요");
+            } else {
+                b.guidance("사설/예약 IP로 해석되는 MX는 외부 발신자가 접근할 수 없습니다 — 공인 IP를 가리키도록 수정하세요");
+            }
         }
 
         if (entries.size() == 1) {

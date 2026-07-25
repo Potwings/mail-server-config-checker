@@ -1,5 +1,6 @@
 package io.github.potwings.mailcheck.web.api;
 
+import io.github.potwings.mailcheck.net.IpRanges;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -67,7 +68,7 @@ final class InputValidator {
         return ips;
     }
 
-    /** Validates a single IPv4/IPv6 literal. */
+    /** Validates a single IPv4/IPv6 literal and rejects private/reserved ranges. */
     private static String normalizeIp(String raw) {
         String ip = raw.trim();
         Matcher v4 = IPV4.matcher(ip);
@@ -77,17 +78,28 @@ final class InputValidator {
                     throw bad("IP 형식이 올바르지 않습니다: " + raw);
                 }
             }
-            return ip;
+            return requirePublic(ip, raw);
         }
         if (ip.contains(":")) {
             try {
                 // Colon literals are parsed locally — no DNS resolution happens here.
-                return InetAddress.getByName(ip).getHostAddress();
+                return requirePublic(InetAddress.getByName(ip).getHostAddress(), raw);
+            } catch (ResponseStatusException e) {
+                throw e;
             } catch (Exception e) {
                 throw bad("IP 형식이 올바르지 않습니다: " + raw);
             }
         }
         throw bad("IP 형식이 올바르지 않습니다: " + raw);
+    }
+
+    /** PTR/RBL results for private/reserved IPs are meaningless (some RBL zones even list them). */
+    private static String requirePublic(String ip, String raw) {
+        String reason = IpRanges.nonRoutableReason(ip);
+        if (reason != null) {
+            throw bad("공인 IP가 아닙니다 — " + reason + ": " + raw + ". 발신 서버의 공인 IP를 입력하세요");
+        }
+        return ip;
     }
 
     private static ResponseStatusException bad(String message) {
