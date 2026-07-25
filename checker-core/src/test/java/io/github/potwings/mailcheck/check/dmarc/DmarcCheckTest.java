@@ -122,4 +122,38 @@ class DmarcCheckTest {
 
         assertThat(run("example.com").status()).isEqualTo(CheckStatus.WARN);
     }
+
+    @Test
+    void 외부_rua_승인_레코드가_없으면_WARN() {
+        when(dns.query("_dmarc.example.com", RecordType.TXT))
+                .thenReturn(txt("v=DMARC1; p=reject; rua=mailto:reports@thirdparty.com"));
+        when(dns.query("example.com._report._dmarc.thirdparty.com", RecordType.TXT)).thenReturn(EMPTY);
+
+        CheckResult r = run("example.com");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.WARN);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("_report._dmarc"));
+    }
+
+    @Test
+    void 외부_rua_승인_레코드가_있으면_PASS() {
+        when(dns.query("_dmarc.example.com", RecordType.TXT))
+                .thenReturn(txt("v=DMARC1; p=reject; rua=mailto:reports@thirdparty.com!10m"));
+        when(dns.query("example.com._report._dmarc.thirdparty.com", RecordType.TXT))
+                .thenReturn(txt("v=DMARC1"));
+
+        CheckResult r = run("example.com");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.PASS);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("승인"));
+    }
+
+    @Test
+    void 같은_조직의_rua는_승인_조회를_하지_않는다() {
+        // dmarc.example.com은 example.com과 같은 조직 — 승인 레코드 조회 스텁이 없어도 통과해야 함
+        when(dns.query("_dmarc.example.com", RecordType.TXT))
+                .thenReturn(txt("v=DMARC1; p=reject; rua=mailto:r@dmarc.example.com"));
+
+        assertThat(run("example.com").status()).isEqualTo(CheckStatus.PASS);
+    }
 }
