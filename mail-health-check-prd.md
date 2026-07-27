@@ -1,8 +1,10 @@
 # PRD — 메일 서버 설정 진단 도구 (Mail Health Check)
 
-- **버전**: v1.4 (2026-07-26, **실메일 단일 진입점으로 전환** — 도메인/IP 입력 폼을 폐지하고 테스트 메일 수신 기반 자동 진단으로 개편. 기존 1단계/2단계 구도 폐지, DNS 검사 엔진은 수신 파이프라인이 자동 호출하는 내부 구현으로 흡수)
+- **버전**: v1.6 (2026-07-28, **구 PR #1 커버리지 확대 항목의 M8 이관 반영** — M7 전환으로 기반(도메인/IP 입력 폼·`InputValidator`·`TargetIpResolver`)을 잃어 PR을 닫고 항목별 판정을 `m8-backlog.md`에 기록. 검사 항목 표에 DMARC 외부 리포트 승인·제네릭 PTR 경고·RBL IPv6를 명시하고, MTA-STS/TLS-RPT를 부가(후순위)에서 독립 검사 항목으로 승격)
+  - v1.5 (2026-07-28, **M7 실메일 파이프라인 구현 완료 반영** — 구현 중 확정 사항 문서화: 파일 기반 세션 저장(DB 없음), 결과 페이지 폴링 갱신, 세션 TTL 24h(수신 매칭 기준·만료 후 결과 열람 유지), jSPF 불채택(자체 구현 유지), SMTP 수신은 pipe 방식 확정)
+  - v1.4 (2026-07-26, **실메일 단일 진입점으로 전환** — 도메인/IP 입력 폼을 폐지하고 테스트 메일 수신 기반 자동 진단으로 개편. 기존 1단계/2단계 구도 폐지, DNS 검사 엔진은 수신 파이프라인이 자동 호출하는 내부 구현으로 흡수)
 - **작성 목적**: 개인 개발 → 사내 도입 경로의 메일 서버 설정 진단 도구 개발 기준 문서
-- **상태**: 개발 진행 중 — DNS 검사 엔진(SPF/DMARC/MX/PTR/RBL/DBL/전파) 및 도메인 입력형 웹 UI 완성(구 M1~M5.5), 실메일 파이프라인 착수 전
+- **상태**: 개발 진행 중 — DNS 검사 엔진(구 M1~M5.5) + 실메일 파이프라인(M7: 주소 발급→수집 폴링→자동 진단→결과 누적, QA 완료) 구현 완료. 남은 것: 서버 배포 스모크(M9 일부 선행), M6 잔여(unbound·RCPT 토큰 검증 등), M8(헤더 기반 검사 + 구 PR #1 이관 항목 — `m8-backlog.md`)
 
 ---
 
@@ -59,16 +61,17 @@
 
 | 검사 항목 | 상세 요구사항 |
 |---|---|
-| **SPF** | 레코드 린트는 항상 수행: `v=spf1` TXT 파싱, 중복 레코드 = permerror, include 재귀 포함 **10-lookup 제한 카운팅**(ptr/exists도 카운트 포함), void lookup ≤ 2, `+all` 과허용 경고, 종단 `-all`/`~all` 확인. **RFC 7208 `check_host()` 완전 평가**: 실제 세션 정보(접속 IP, HELO, MAIL FROM)를 확보하므로 `%{h}` 포함 **모든 매크로를 실값으로 확장** — 합성 발신자(postmaster@도메인) 대체나 세션 전용 매크로 평가 제외가 불필요. 메커니즘(a/mx/ip4/ip6/include/exists/ptr/all)과 redirect를 재귀 평가해 pass/softfail/fail/neutral 판정, 미허용 IP는 FAIL + `ip4:` 추가 안내 |
+| **SPF** | 레코드 린트는 항상 수행: `v=spf1` TXT 파싱, 중복 레코드 = permerror, include 재귀 포함 **10-lookup 제한 카운팅**(ptr/exists도 카운트 포함), void lookup ≤ 2, `+all` 과허용 경고, 종단 `-all`/`~all` 확인. **RFC 7208 `check_host()` 완전 평가**: 실제 세션 정보(접속 IP, HELO, MAIL FROM)를 확보하므로 `%{s}`/`%{l}`/`%{o}`/`%{h}` 매크로를 **실값으로 확장** — 합성 발신자(postmaster@도메인) 대체나 세션 전용 매크로 평가 제외가 불필요 (단 `%{p}`는 deprecated 매크로로 평가 제외 유지 — RFC 7208 §7.3도 사용 비권장). SPF 평가 도메인은 MAIL FROM 도메인, bounce면 HELO 도메인(HELO가 주소 리터럴 등 비호스트명이면 ERROR). 메커니즘(a/mx/ip4/ip6/include/exists/ptr/all)과 redirect를 재귀 평가해 pass/softfail/fail/neutral 판정, 미허용 IP는 FAIL + `ip4:` 추가 안내 |
 | **DKIM** | `DKIM-Signature` 헤더에서 셀렉터 직접 추출 → `{selector}._domainkey.{domain}` TXT 조회 + **실제 서명 검증**. 키 검증 포함 — 키 길이(RSA 기준 1024 최소 / 2048 권장, `k=ed25519`이면 RSA 기준 미적용 별도 분기), `p=` 유효성(빈 값 = 키 폐기), `t=y` 테스트 모드 감지. 서명 헤더 자체가 없으면 FAIL(발신 서버 DKIM 미설정) |
-| **DMARC** | `_dmarc.{domain}` TXT. 레코드 부재 시 **조직 도메인(Organizational Domain) 폴백 재조회** (RFC 7489 §6.6.3, Public Suffix List 필요). `p=`(none/quarantine/reject) 정책 강도, `sp=`, `rua`/`ruf`, `pct`, `adkim`/`aspf`. **실메일 기반 alignment 실검증**: SPF alignment(MAIL FROM 도메인 vs From 도메인, aspf 모드 반영) + DKIM alignment(서명 `d=` vs From 도메인, adkim 모드 반영) — 레코드 존재 ≠ 실제 통과를 구분해 판정 |
-| **PTR / FCrDNS** | 세션 접속 IP의 PTR 존재 + **Forward-Confirmed**(PTR → 호스트명 → A → 동일 IP 복귀) 양방향 검증. **HELO/EHLO 명과 PTR 호스트명 일치 검사** 포함 (세션에서 HELO 직접 확보) |
-| **RBL** | 세션 접속 IP를 옥텟 역순 + zone 조회, `127.0.0.x` 리턴 코드 → 등재 리스트 매핑. 대상: Spamhaus ZEN(DQS 키), Barracuda(조회 IP 사전 등록 필요 — 제약 3 참조), SpamCop, PSBL(`psbl.surriel.com`), Mailspike(`bl.mailspike.net`), Hostkarma(white/yellow/NOBL 코드는 미등재, black/brown만 등재). 추가 후보: Spamrats, blocklist.de, manitu — 사전 등록 불필요·무료 조회 가능한 존부터 순차 추가. SORBS는 폐기됨(제약 2)으로 제외 |
+| **DMARC** | `_dmarc.{domain}` TXT. 레코드 부재 시 **조직 도메인(Organizational Domain) 폴백 재조회** (RFC 7489 §6.6.3, Public Suffix List 필요). `p=`(none/quarantine/reject) 정책 강도, `sp=`, `rua`/`ruf`, `pct`, `adkim`/`aspf`. **실메일 기반 alignment 실검증**: SPF alignment(MAIL FROM 도메인 vs From 도메인, aspf 모드 반영) + DKIM alignment(서명 `d=` vs From 도메인, adkim 모드 반영) — 레코드 존재 ≠ 실제 통과를 구분해 판정. **외부 리포트 수신 승인 검증(RFC 7489 §7.1)**: `rua`/`ruf` 수신 주소가 타 조직 도메인이면 `<정책도메인>._report._dmarc.<수신도메인>` TXT 존재 확인 — 없으면 WARN(리포트가 조용히 폐기되는 상태) |
+| **PTR / FCrDNS** | 세션 접속 IP의 PTR 존재 + **Forward-Confirmed**(PTR → 호스트명 → A → 동일 IP 복귀) 양방향 검증. **HELO/EHLO 명과 PTR 호스트명 일치 검사** 포함 (세션에서 HELO 직접 확보). **제네릭/동적 호스트명 경고**: FCrDNS가 성립해도 호스트명에 IP 옥텟이 포함되거나 `dynamic`/`pool`/`dsl` 등 ISP 기본 패턴이면 WARN(수신측이 스팸 신호로 취급) |
+| **RBL** | 세션 접속 IP를 옥텟 역순 + zone 조회, `127.0.0.x` 리턴 코드 → 등재 리스트 매핑. 대상: Spamhaus ZEN(DQS 키), Barracuda(조회 IP 사전 등록 필요 — 제약 3 참조), SpamCop, PSBL(`psbl.surriel.com`), Mailspike(`bl.mailspike.net`), Hostkarma(white/yellow/NOBL 코드는 미등재, black/brown만 등재). 추가 후보: Spamrats, blocklist.de, manitu — 사전 등록 불필요·무료 조회 가능한 존부터 순차 추가. SORBS는 폐기됨(제약 2)으로 제외. **IPv6 대상 지원**: 세션 접속 IP가 IPv6이면 nibble 역순(RFC 3596)으로 조회, 미지원 존은 결과에 제외 사유 표시 |
 | **도메인 RBL (Spamhaus DBL)** | IP가 아닌 **도메인 자체의 블랙리스트 등재 여부** — `{domain}.{DQS키}.dbl.dq.spamhaus.net` 조회, `127.0.1.x` 리턴 코드 매핑(spam/phish/malware/abused-legit 구분). 기존 ZEN용 DQS 키 재사용. mail-tester 등 기존 도구는 IPv4 블랙리스트만 검사하므로 차별화 항목. 오류 코드(`127.255.255.x`)를 "미등재"로 오판 금지 규칙 동일 적용 |
 | **MX / DNS 배포** | MX 존재·우선순위, MX 호스트의 A/AAAA 정상 해석, **MX exchange 호스트명이 CNAME(alias)이면 RFC 5321 §5.1 / RFC 2181 §10.3 위반** 감지 |
 | **DNS 전파 (다중 리졸버)** | 레코드 변경 직후 리졸버 캐시로 인한 오판 방지. **권한 네임서버(NS 직접 조회)를 기준값**으로 두고, 다중 리졸버에서 동일 레코드(SPF/DMARC/MX/A)를 병렬 조회 → 기준값과 비교. 조회 대상: 글로벌 공용(Google 8.8.8.8, Cloudflare 1.1.1.1, Quad9 9.9.9.9, OpenDNS 208.67.222.222) + **국내 통신사(KT 168.126.63.1, SK브로드밴드 219.250.36.130, LG U+ 164.124.101.2)** — 사내·국내 고객사의 실제 수신 환경은 통신사 DNS를 타는 경우가 많아 국내 전파 확인이 실용적으로 중요. 전파율(N/M 리졸버 일치), 불일치 리졸버 목록, 각 응답의 TTL 잔여 시간 표시. 전체 일치 = PASS, 일부 불일치 = WARN(전파 진행 중) + 예상 완료 시점 안내. 엣지케이스: Quad9는 멀웨어 도메인에 차단 응답을 주므로 차단 도메인이면 전파 불일치로 오판 가능 — 인지하고 처리 |
 | **헤더 품질** | mail-tester 벤치마킹(2026-07-26) — 실제 감점의 주요인이 SPF/DKIM이 아닌 헤더 품질이었음: `To:` 누락(MISSING_HEADERS), 헤더 간격/형식 오류(HDRS_MISSP), `Message-ID`·`Date` 존재와 형식 검증 — 정상 설정된 MTA/submission이라면 자동 부여되는 헤더이므로 부재 = 서버 설정 문제의 신호. 콘텐츠 품질 검사(List-Unsubscribe, HTML 구성 등)는 비목표로 제외 |
-| **부가 (후순위)** | 발신 세션 STARTTLS 사용 여부 관찰(수신자 입장의 수동 관찰 — 능동 검사 아님), MTA-STS(TXT + 정책 파일 fetch), TLS-RPT, BIMI, DANE-TLSA, DNSSEC, MIME 파싱 + 스팸 스코어(SpamAssassin) 옵션 |
+| **MTA-STS / TLS-RPT** | MTA-STS(RFC 8461): `_mta-sts.{domain}` TXT + `https://mta-sts.{domain}/.well-known/mta-sts.txt` 정책 파일 fetch·파싱, 정책의 `mx` 패턴과 실제 MX 대조(`mode=enforce`인데 불일치면 FAIL). TLS-RPT(RFC 8460): `_smtp._tls.{domain}` TXT. HTTP 조회는 `PolicyFetcher` 추상화 경유 — 단위 테스트 네트워크 금지 원칙 유지 |
+| **부가 (후순위)** | 발신 세션 STARTTLS 사용 여부 관찰(수신자 입장의 수동 관찰 — 능동 검사 아님), BIMI, DANE-TLSA, DNSSEC, MIME 파싱 + 스팸 스코어(SpamAssassin) 옵션 |
 
 **출력**: 항목별 `PASS / WARN / FAIL` + 판정 사유(evidence) + 개선 가이드. 발송 건별 결과 카드 누적(다중 서버 지원)
 
@@ -78,8 +81,11 @@
 |---|---|---|
 | 백엔드 | Java / Spring Boot | |
 | DNS | **dnsjava** (org.xbill.DNS) | 커스텀 리졸버 지정(DQS), 레코드 타입·타임아웃 제어 필수라 `InetAddress` 불가 |
-| SPF/DKIM | Apache James **jSPF** / **jDKIM** 재사용 | 매크로 확장·lookup 카운팅 직접 구현 시 엣지케이스 지옥. jDKIM은 서명 검증에 사용 |
-| SMTP 수신 | **기존 운영 중인 Postfix 연동** (홈서버) | 수신 도메인을 virtual 도메인으로 추가, `check-{uuid}` catch-all → 앱 전달(pipe / LMTP / milter 중 M6에서 선정). 미발급 주소의 RCPT 단계 거부는 Postfix policy service(`check_recipient_access`)로 앱에 위임 가능. 릴레이 금지 유지 |
+| SPF | **자체 구현** (jSPF 불채택 — M2~M7에서 파서·lookup 카운터·check_host 평가기 완성) | 매크로 확장·10-lookup/void 카운팅·실세션 평가까지 자체 구현으로 커버, 단위 테스트로 엣지케이스 고정 |
+| DKIM | Apache James **jDKIM** (M8 예정) | 서명 검증에 사용. mime4j 기반이라 M7의 From 파싱(mime4j-dom)과 스택 일치 |
+| SMTP 수신 | **기존 운영 중인 Postfix 연동** (홈서버) | **pipe transport로 확정**(M6) — 세션 값을 명령행 인자로, 원본을 stdin으로 수집기에 전달해 파일 적재. 미발급 주소의 RCPT 단계 거부는 Postfix policy service(`check_recipient_access`)로 앱에 위임 가능(M6 잔여). 릴레이 금지 유지 |
+| 메일 파싱 | Apache **mime4j-dom** | From: 헤더 전용 lenient 파싱 (display name/quoted/folding/group). jakarta.mail 불채택 |
+| 세션·결과 저장 | **파일 기반 JSON** (DB 없음) | `{data-dir}/sessions/{uuid}.json` — 토큰 `check-{uuid}`에서 파일 직접 도출(인덱스 불필요), temp+ATOMIC_MOVE로 재시작 내구성. 재처리 방지는 append-only `processed.log` |
 | 동시성 | `CompletableFuture` 병렬 실행 | 검사 항목별 개별 타임아웃 격리 — 한 항목이 늘어져도 전체 안 죽게 |
 | 캐싱 | DNS TTL 기반 캐시 | RBL은 짧게 |
 | 배포 | **Beelink 홈서버 직접 수신 확정** (2026-07-26 인바운드 25 수신 테스트 완료) | 웹은 기존 Cloudflare Tunnel 유지, SMTP는 홈 회선 인바운드 25 직접 수신. 잔여 리스크는 제약 5 참조 |
@@ -103,11 +109,11 @@
 
 ## 7. 비기능 요구사항
 
-- 진단 응답: 메일 수신 시점부터 병렬 실행 기준 수 초 이내 목표 (항목별 타임아웃으로 상한 보장)
-- 결과 페이지는 수신·진단 완료를 자동 반영 (폴링 또는 SSE)
+- 진단 응답: 메일 수신 시점부터 병렬 실행 기준 수 초 이내 목표 (항목별 타임아웃으로 상한 보장, 수집 디렉터리 폴링 주기 5s + 결과 페이지 폴링 4s)
+- 결과 페이지는 수신·진단 완료를 자동 반영 — **클라이언트 폴링(4s)으로 확정**(M7). 발송 건별 카드는 append-only 렌더링(수신 순서 유지, 열림 상태 보존), 공유 URL `/?s={id}`로 재접근 가능
 - 검사 항목 추가가 쉬운 구조 (`Check` 구현체 추가만으로 확장)
 - RBL fan-out에 rate limit 적용
-- 발급 주소 세션 만료(TTL) 및 만료 후 결과 접근 정책 정의
+- 발급 주소 세션 TTL: **24h, 수신 매칭 기준으로 확정**(M7) — 만료 후 도착한 메일은 진단하지 않고 스킵, 이미 쌓인 결과는 계속 열람 가능(`expired` 플래그로 표시). 주소 발급 자체의 rate limit은 미구현(알려진 잔여)
 
 ## 8. 성공 지표
 
@@ -129,6 +135,6 @@
 5. ~~**M5**: PTR/FCrDNS + 결과 UI~~ ✅ (배포는 M9로 이동)
 6. ~~**M5.5**: RBL 커버리지 확대(PSBL·Mailspike·Hostkarma) + Spamhaus DBL 도메인 검사 + SPF check_host 평가~~ ✅
 7. **M6**: 수신 인프라 — **핵심 구축·검증 완료**(2026-07-26, 상세·연동 계약은 `infra-work.md`): `mail-check.yonggeon.kr` MX 구성, 진단 전용 Postfix smtpd 분리, pipe→수집기(원본+세션 파일 적재), 외부 수신·릴레이 차단·원본 무손상 검증. **잔여**: RBL 조회 정상화 — Spamhaus(ZEN·DBL)는 DQS로 해결(키 발급 완료 2026-07-27), 비-Spamhaus 존(Barracuda·SpamCop·PSBL·Mailspike·Hostkarma)용 unbound 재귀 리졸버 설치(포워딩 모드 금지) + Barracuda 조회 IP 등록, RCPT 시점 토큰 검증(policy service), 주소 발급/세션 관리(웹), 처리분 정리 정책, postscreen·인증서
-8. **M7**: 실메일 파이프라인 — 수신 원문·세션 정보 → 도메인/IP 추출 → 기존 검사 엔진 자동 실행 → 결과 페이지(발송 건별 누적). **기존 도메인/IP 입력 폼 및 `?domain=&ip=` API 제거**
-9. **M8**: 헤더 기반 검사 — DKIM 서명 검증(jDKIM), HELO/PTR 일치, DMARC alignment 실검증, 헤더 품질
+8. ~~**M7**: 실메일 파이프라인 — 수신 원문·세션 정보 → 도메인/IP 추출 → 기존 검사 엔진 자동 실행 → 결과 페이지(발송 건별 누적). **기존 도메인/IP 입력 폼 및 `?domain=&ip=` API 제거**~~ ✅ (2026-07-27 구현·QA 완료, 계획서 `m7-plan.md`: 신규 `checker-mail` 모듈 + `POST/GET /api/v1/sessions` API + 폴링 UI + SPF 실세션 평가. 사설 IP(헤어핀 NAT)는 진단 거부 카드, 미발급 토큰은 스킵. 서버 배포 스모크는 M9에서)
+9. **M8**: 헤더 기반 검사 — DKIM 서명 검증(jDKIM), HELO/PTR 일치, DMARC alignment 실검증, 헤더 품질. **+ 구 PR #1 이관 항목**(M7 전환으로 기반을 잃어 재구현 — 판정·원본 커밋은 `m8-backlog.md`): DMARC 외부 리포트 승인·제네릭 PTR 경고·MTA-STS/TLS-RPT는 그대로 이식, RBL IPv6는 범위 축소 재작성, 사설 IP 입력 검증은 M7 `IpClassifier`가 대체해 폐기
 10. **M9**: 배포 + 사내 공유, 실사용 지표 수집 시작
