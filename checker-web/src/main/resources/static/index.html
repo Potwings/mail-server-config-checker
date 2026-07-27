@@ -3,91 +3,225 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mail Health Check</title>
+<title>Mail Health Check — 메일 서버 설정 점검</title>
 <style>
   :root {
-    --bg: #f6f7f9; --card: #ffffff; --text: #1a202c; --muted: #64748b; --border: #e2e8f0;
-    --pass: #16a34a; --warn: #d97706; --fail: #dc2626; --skip: #64748b; --error: #7c3aed;
+    --bg: #f7f8fa; --card: #ffffff; --text: #1c2431; --muted: #64707f; --border: #e4e7ec;
+    --accent: #2563eb; --accent-soft: #eff4ff;
+    --pass: #16803c; --pass-soft: #edf7f0;
+    --warn: #b45309; --warn-soft: #fdf6e7;
+    --fail: #b91c1c; --fail-soft: #fbefee;
+    --skip: #64707f; --skip-soft: #f1f3f6;
+    --error: #6d28d9; --error-soft: #f4f0fc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131720; --card: #1a202c; --text: #e6eaf0; --muted: #97a2b2; --border: #2b3345;
+      --accent: #7096f8; --accent-soft: #1d2740;
+      --pass: #4ade80; --pass-soft: #16251c;
+      --warn: #fbbf24; --warn-soft: #2a2211;
+      --fail: #f87171; --fail-soft: #2c1a19;
+      --skip: #97a2b2; --skip-soft: #232a38;
+      --error: #a78bfa; --error-soft: #241d38;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'Segoe UI', 'Malgun Gothic', system-ui, sans-serif; background: var(--bg); color: var(--text); }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
-  h1 { font-size: 1.6rem; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 24px; font-size: .95rem; }
-  button { padding: 12px 22px; border: 0; border-radius: 10px; background: #2563eb; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
-  button:disabled { opacity: .5; cursor: default; }
-  .hint { color: var(--muted); font-size: .82rem; margin: 10px 0 0; }
-  .addr-box { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; }
-  .addr { font-family: Consolas, 'Courier New', monospace; font-size: 1.05rem; font-weight: 600; word-break: break-all; }
-  .copy-btn { padding: 8px 14px; font-size: .85rem; }
-  .banner { border-radius: 10px; padding: 12px 16px; margin: 14px 0; font-size: .92rem; }
-  .banner.wait { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; display: flex; align-items: center; gap: 10px; }
-  .banner.expired { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
-  .err-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
-  .mail-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; margin: 18px 0; padding: 16px 20px; }
-  .mail-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
-  .mail-title { font-size: 1.1rem; font-weight: 700; }
-  .mail-meta { color: var(--muted); font-size: .85rem; }
-  .note-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 10px; padding: 10px 14px; margin-top: 10px; font-size: .92rem; }
-  .meta { color: var(--muted); font-size: .88rem; margin: 10px 2px 10px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
-  .card summary { list-style: none; cursor: pointer; padding: 16px 20px; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 10px; user-select: none; }
-  .card summary::-webkit-details-marker { display: none; }
-  .card summary:hover { background: #f8fafc; }
-  .badge { font-size: .75rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #fff; letter-spacing: .5px; }
-  .elapsed { margin-left: auto; font-size: .78rem; color: var(--muted); font-weight: 400; }
-  .peek { font-size: .82rem; color: var(--muted); font-weight: 400; max-width: 45%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .chev { color: var(--muted); font-size: .8rem; transition: transform .15s; }
-  .card[open] .chev { transform: rotate(90deg); }
-  .card[open] .peek { display: none; }
-  .detail { padding: 0 20px 18px; border-top: 1px solid var(--border); }
-  ul { margin: 12px 0 0; padding-left: 20px; }
-  li { margin: 4px 0; font-size: .92rem; word-break: break-all; }
-  .guide { margin-top: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 14px; font-size: .9rem; }
-  .guide li { margin: 4px 0; }
-  .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
-  .chip { font-size: .82rem; padding: 5px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); }
-  .spin { display: inline-block; width: 16px; height: 16px; border: 2px solid #2563eb; border-top-color: transparent; border-radius: 50%; animation: r .7s linear infinite; flex-shrink: 0; }
+  body { margin: 0; font-family: 'Segoe UI', 'Malgun Gothic', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+  button { font-family: inherit; }
+  button:focus-visible, summary:focus-visible, .addr:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mono { font-family: Consolas, 'Cascadia Code', 'Courier New', monospace; }
+
+  h1 { font-size: 1.55rem; letter-spacing: -.02em; margin: 0 0 8px; }
+  .lead { color: var(--muted); font-size: .96rem; margin: 0 0 28px; max-width: 620px; }
+  .lead b { color: var(--text); font-weight: 600; }
+
+  .steps { margin: 0 0 28px; padding: 0; list-style: none; display: grid; gap: 8px; counter-reset: step; }
+  .steps li { display: flex; gap: 12px; align-items: baseline; color: var(--muted); font-size: .92rem; counter-increment: step; }
+  .steps li::before { content: counter(step); flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--card); border: 1px solid var(--border); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 600; transform: translateY(4px); }
+  .steps b { color: var(--text); font-weight: 600; }
+
+  .cta { padding: 12px 24px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  .cta:hover { filter: brightness(1.07); }
+  .cta:active { transform: scale(.98); }
+  .cta:disabled { opacity: .55; cursor: default; }
+  .checks-line { color: var(--muted); font-size: .82rem; margin-top: 26px; }
+
+  /* ---- 스테퍼 ---- */
+  .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+  .st { display: flex; align-items: center; gap: 7px; font-size: .85rem; color: var(--muted); }
+  .st .dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .74rem; font-weight: 600; background: var(--card); color: var(--muted); border: 1px solid var(--border); flex-shrink: 0; }
+  .st.done .dot { background: var(--pass-soft); color: var(--pass); border-color: transparent; }
+  .st.active { color: var(--text); font-weight: 600; }
+  .st.active .dot { background: var(--accent); color: #fff; border-color: transparent; }
+  .st-line { flex: 0 0 22px; height: 1px; background: var(--border); }
+
+  /* ---- 주소 패널 ---- */
+  .addr-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .addr-label { font-size: .82rem; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .ttl { font-variant-numeric: tabular-nums; }
+  .ttl.low { color: var(--fail); font-weight: 600; }
+  .addr-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .addr { flex: 1 1 260px; font-size: 1.02rem; font-weight: 600; word-break: break-all; cursor: pointer; padding: 10px 13px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+  .addr:hover { border-color: var(--accent); }
+  .copy-btn { padding: 10px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-size: .88rem; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+  .copy-btn:active { transform: scale(.97); }
+  .copy-btn.copied { background: var(--pass); }
+  .addr-foot { margin-top: 11px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+  .addr-foot .hint { color: var(--muted); font-size: .8rem; margin: 0; }
+  .new-session { background: none; border: 0; padding: 0; color: var(--accent); font-size: .8rem; cursor: pointer; text-decoration: underline; flex-shrink: 0; }
+
+  /* ---- 도움말 ---- */
+  .help { margin: 12px 0 0; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: .87rem; }
+  .help summary { list-style: none; cursor: pointer; padding: 10px 15px; color: var(--muted); user-select: none; }
+  .help summary::-webkit-details-marker { display: none; }
+  .help summary::before { content: '▸ '; }
+  .help[open] summary::before { content: '▾ '; }
+  .help .help-body { padding: 0 15px 13px; color: var(--muted); }
+  .help .help-body b { color: var(--text); }
+  .help code { font-family: Consolas, 'Cascadia Code', monospace; background: var(--skip-soft); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: .8rem; word-break: break-all; }
+  .help ul { margin: 8px 0 0; padding-left: 18px; }
+  .help li { margin: 4px 0; }
+
+  /* ---- 배너 ---- */
+  .banner { border-radius: 10px; padding: 12px 15px; margin: 16px 0; font-size: .9rem; display: flex; align-items: center; gap: 10px; }
+  .banner.wait { background: var(--accent-soft); color: var(--accent); }
+  .banner.expired { background: var(--warn-soft); color: var(--warn); }
+  .err-box { background: var(--fail-soft); color: var(--fail); border-radius: 10px; padding: 12px 15px; margin: 16px 0; font-size: .9rem; }
+  .spin { display: inline-block; width: 15px; height: 15px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: r .7s linear infinite; flex-shrink: 0; }
   .spin.on-btn { border-color: #fff; border-top-color: transparent; vertical-align: -3px; }
   @keyframes r { to { transform: rotate(360deg); } }
+
+  /* ---- 진단 결과 카드 ---- */
+  .mail-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin: 16px 0; padding: 17px 20px; }
+  .mail-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .mail-title { font-size: 1.08rem; font-weight: 700; word-break: break-all; }
+  .verdict { font-size: .76rem; font-weight: 700; padding: 3px 11px; border-radius: 999px; flex-shrink: 0; }
+  .verdict.ok { background: var(--pass-soft); color: var(--pass); }
+  .verdict.warn { background: var(--warn-soft); color: var(--warn); }
+  .verdict.bad { background: var(--fail-soft); color: var(--fail); }
+  .mail-seq { color: var(--muted); font-size: .8rem; margin-left: auto; flex-shrink: 0; }
+  .kv-row { display: flex; gap: 6px 14px; flex-wrap: wrap; margin: 8px 0 0; font-size: .8rem; color: var(--muted); }
+  .kv { word-break: break-all; }
+  .kv b { color: var(--text); font-weight: 600; margin-right: 3px; }
+  .note-box { background: var(--fail-soft); color: var(--fail); border-radius: 9px; padding: 11px 14px; margin-top: 12px; font-size: .9rem; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 13px 0 12px; font-size: .78rem; }
+  .chip { padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+
+  .card { border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
+  .card summary { list-style: none; cursor: pointer; padding: 11px 14px; font-size: .93rem; font-weight: 600; display: flex; align-items: center; gap: 9px; user-select: none; }
+  .card summary::-webkit-details-marker { display: none; }
+  .card summary:hover { background: var(--skip-soft); }
+  .slabel { font-size: .7rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; flex-shrink: 0; }
+  .peek { font-size: .78rem; color: var(--muted); font-weight: 400; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+  .chev { color: var(--muted); font-size: .7rem; transition: transform .15s; flex-shrink: 0; }
+  .card[open] .chev { transform: rotate(90deg); }
+  .detail { padding: 0 14px 13px; font-size: .87rem; border-top: 1px solid var(--border); }
+  .detail ul { margin: 10px 0 0; padding-left: 18px; }
+  .detail li { margin: 4px 0; word-break: break-all; font-size: .84rem; }
+  .guide { margin-top: 11px; background: var(--warn-soft); border-radius: 8px; padding: 10px 13px; }
+  .guide b { color: var(--warn); }
+  .guide ul { margin: 6px 0 0; }
+  .report-meta { color: var(--muted); font-size: .78rem; margin: 10px 0 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spin { animation-duration: 1.4s; }
+    .chev { transition: none; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Mail Health Check</h1>
-  <p class="sub">발급된 주소로 테스트 메일 1통을 보내면 SPF · DMARC · MX · PTR/FCrDNS · RBL · DNS 전파를 실제 발송 기준으로 진단합니다.</p>
 
-  <div id="issue-area">
-    <button id="issue">테스트 주소 발급</button>
-    <p class="hint">주소를 발급받고 그 주소로 점검할 메일 서버에서 메일을 보내면, 접속 IP·HELO·MAIL FROM 등 실제 세션 정보를 기준으로 자동 진단됩니다.</p>
-  </div>
+  <!-- ==== 랜딩 ==== -->
+  <section id="issue-area">
+    <h1>Mail Health Check</h1>
+    <p class="lead">발급된 주소로 <b>점검할 메일 서버에서</b> 테스트 메일을 1통 보내면, 실제 SMTP 세션의 접속 IP · HELO · MAIL FROM을 기준으로 발송 환경을 자동 진단합니다.</p>
 
-  <div id="session-area" hidden>
-    <div class="addr-box">
-      <span>테스트 주소:</span>
-      <span class="addr" id="addr"></span>
-      <button class="copy-btn" id="copy" type="button">복사</button>
+    <ol class="steps">
+      <li><span><b>테스트 주소 발급</b> — 일회용 수신 주소를 발급받습니다. 회원가입도, 도메인 입력도 필요 없습니다.</span></li>
+      <li><span><b>테스트 메일 발송</b> — 점검할 메일 서버를 거쳐 발급 주소로 메일 1통을 보냅니다.</span></li>
+      <li><span><b>자동 진단 결과</b> — 메일이 도착하면 항목별 진단과 개선 가이드가 자동으로 표시됩니다.</span></li>
+    </ol>
+
+    <div>
+      <button class="cta" id="issue">테스트 주소 발급하기</button>
     </div>
-    <p class="hint">이 주소로 테스트 메일을 1통 보내세요. 여러 발신 서버를 점검하려면 같은 주소로 서버별로 각각 발송하면 됩니다. 결과 페이지 주소(URL)를 저장해 두면 나중에 다시 열람할 수 있습니다.</p>
+
+    <p class="checks-line">검사 항목: SPF · DKIM · DMARC · DMARC Alignment · MX · PTR/FCrDNS/HELO · IP RBL · 도메인 RBL · DNS 전파 · MTA-STS/TLS-RPT · 헤더 품질</p>
+    <div id="issue-err"></div>
+  </section>
+
+  <!-- ==== 세션 ==== -->
+  <section id="session-area" hidden>
+    <div class="stepper" id="stepper">
+      <span class="st done" data-step="1"><span class="dot">✓</span>주소 발급</span>
+      <span class="st-line"></span>
+      <span class="st" data-step="2"><span class="dot">2</span>테스트 메일 발송</span>
+      <span class="st-line"></span>
+      <span class="st" data-step="3"><span class="dot">3</span>진단 결과</span>
+    </div>
+
+    <div class="addr-panel">
+      <div class="addr-label">
+        <span>이 주소로 테스트 메일을 보내세요 — 클릭하면 복사됩니다</span>
+        <span class="ttl" id="ttl"></span>
+      </div>
+      <div class="addr-row">
+        <span class="addr mono" id="addr" role="button" tabindex="0" title="클릭하여 복사"></span>
+        <button class="copy-btn" id="copy" type="button">주소 복사</button>
+      </div>
+      <div class="addr-foot">
+        <p class="hint">여러 발신 서버를 점검하려면 같은 주소로 서버별로 각각 발송하세요. 현재 페이지 URL을 저장해 두면 결과를 나중에 다시 열람할 수 있습니다.</p>
+        <button class="new-session" id="new-session" type="button">새 주소 발급</button>
+      </div>
+    </div>
+
+    <details class="help">
+      <summary>테스트 메일은 어떻게 보내나요?</summary>
+      <div class="help-body">
+        <b>반드시 점검하려는 메일 서버를 거쳐</b> 발송해야 합니다. 개인 Gmail 등 다른 서비스에서 보내면 그 서비스가 진단 대상이 됩니다.
+        <ul>
+          <li>서버 셸에서 직접: <code>echo "health check" | mail -s "test" 발급주소</code></li>
+          <li>해당 서버를 SMTP 발신 서버로 쓰는 웹메일 · Outlook 등에서 보내도 됩니다.</li>
+          <li>본문 내용은 무엇이든 상관없고, 1통이면 충분합니다.</li>
+        </ul>
+      </div>
+    </details>
+
     <div id="status"></div>
     <div id="mails"></div>
-  </div>
+  </section>
 </div>
 
 <script>
-const COLORS = { PASS: 'var(--pass)', WARN: 'var(--warn)', FAIL: 'var(--fail)', SKIP: 'var(--skip)', ERROR: 'var(--error)' };
 const POLL_MS = 4000;
+const STATUS_META = {
+  PASS:  { label: '통과',   color: 'var(--pass)',  soft: 'var(--pass-soft)'  },
+  FAIL:  { label: '실패',   color: 'var(--fail)',  soft: 'var(--fail-soft)'  },
+  WARN:  { label: '주의',   color: 'var(--warn)',  soft: 'var(--warn-soft)'  },
+  ERROR: { label: '오류',   color: 'var(--error)', soft: 'var(--error-soft)' },
+  SKIP:  { label: '건너뜀', color: 'var(--skip)',  soft: 'var(--skip-soft)'  }
+};
+const STATUS_ORDER = ['FAIL', 'ERROR', 'WARN', 'PASS', 'SKIP'];
 
 const issueArea = document.getElementById('issue-area');
 const issueBtn = document.getElementById('issue');
+const issueErr = document.getElementById('issue-err');
 const sessionArea = document.getElementById('session-area');
 const addrEl = document.getElementById('addr');
 const copyBtn = document.getElementById('copy');
+const ttlEl = document.getElementById('ttl');
 const statusEl = document.getElementById('status');
 const mailsEl = document.getElementById('mails');
+const stepperEl = document.getElementById('stepper');
 
 const renderedMails = new Set(); // queueId(또는 incomingDir) 키 — append-only 렌더링용
 let pollTimer = null;
+let ttlTimer = null;
+let expiresAt = null;
+let sessionExpired = false;
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -98,6 +232,7 @@ function esc(s) {
 issueBtn.addEventListener('click', async () => {
   issueBtn.disabled = true;
   issueBtn.innerHTML = '<span class="spin on-btn"></span>';
+  issueErr.innerHTML = '';
   try {
     const res = await fetch('/api/v1/sessions', { method: 'POST' });
     if (!res.ok) throw new Error('발급 실패 (' + res.status + ')');
@@ -105,38 +240,43 @@ issueBtn.addEventListener('click', async () => {
     history.replaceState(null, '', '/?s=' + encodeURIComponent(session.id));
     enterSession(session);
   } catch (err) {
-    statusEl.innerHTML = '';
-    issueArea.insertAdjacentHTML('beforeend',
-      '<div class="err-box">주소를 발급하지 못했습니다: ' + esc(err.message) + '</div>');
+    issueErr.innerHTML = '<div class="err-box">주소를 발급하지 못했습니다: ' + esc(err.message) + '</div>';
     issueBtn.disabled = false;
-    issueBtn.textContent = '테스트 주소 발급';
+    issueBtn.textContent = '테스트 주소 발급하기';
   }
 });
 
-copyBtn.addEventListener('click', async () => {
+async function copyAddr() {
   try {
     await navigator.clipboard.writeText(addrEl.textContent);
-    copyBtn.textContent = '복사됨';
-    setTimeout(() => copyBtn.textContent = '복사', 1500);
+    copyBtn.textContent = '복사됨 ✓';
+    copyBtn.classList.add('copied');
   } catch (e) {
     copyBtn.textContent = '복사 실패';
   }
-});
+  setTimeout(() => { copyBtn.textContent = '주소 복사'; copyBtn.classList.remove('copied'); }, 1500);
+}
+copyBtn.addEventListener('click', copyAddr);
+addrEl.addEventListener('click', copyAddr);
+addrEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyAddr(); } });
+
+document.getElementById('new-session').addEventListener('click', () => { location.href = '/'; });
 
 function enterSession(session) {
   issueArea.hidden = true;
   sessionArea.hidden = false;
   applySession(session);
-  pollTimer = setInterval(poll, POLL_MS);
+  if (!session.expired) pollTimer = setInterval(poll, POLL_MS);
 }
 
 // 세션 복원 실패 — 빈 주소 박스가 남지 않도록 세션 영역을 되돌리고 발급 화면으로 복귀
 function backToIssue(errHtml) {
   stopPolling();
+  stopTtl();
   statusEl.innerHTML = '';
   sessionArea.hidden = true;
   issueArea.hidden = false;
-  issueArea.insertAdjacentHTML('beforeend', errHtml);
+  issueErr.innerHTML = errHtml;
 }
 
 async function poll() {
@@ -160,81 +300,151 @@ function stopPolling() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
+// ---- 남은 유효 시간 ----
+
+function stopTtl() {
+  if (ttlTimer) { clearInterval(ttlTimer); ttlTimer = null; }
+}
+
+function startTtl(iso) {
+  expiresAt = iso ? new Date(iso).getTime() : null;
+  stopTtl();
+  tickTtl();
+  if (expiresAt && !sessionExpired) ttlTimer = setInterval(tickTtl, 1000);
+}
+
+function tickTtl() {
+  if (!expiresAt || sessionExpired) { ttlEl.textContent = ''; stopTtl(); return; }
+  const left = expiresAt - Date.now();
+  if (left <= 0) {
+    ttlEl.textContent = '수신 마감';
+    ttlEl.classList.add('low');
+    stopTtl();
+    return; // 실제 만료 판정은 서버(expired 필드)가 함 — 다음 폴에서 배너 전환
+  }
+  const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+  ttlEl.textContent = '수신 가능 ' + (m >= 60 ? Math.floor(m / 60) + '시간 ' + (m % 60) + '분' : m + ':' + String(s).padStart(2, '0'));
+  ttlEl.classList.toggle('low', left < 5 * 60000);
+}
+
+// ---- 스테퍼 ----
+
+function updateStepper() {
+  const s2 = stepperEl.querySelector('[data-step="2"]');
+  const s3 = stepperEl.querySelector('[data-step="3"]');
+  const hasMail = renderedMails.size > 0;
+  s2.className = 'st ' + (hasMail ? 'done' : 'active');
+  s2.querySelector('.dot').textContent = hasMail ? '✓' : '2';
+  s3.className = 'st ' + (hasMail ? 'active' : '');
+}
+
+// ---- 세션 상태 반영 ----
+
 function applySession(session) {
   addrEl.textContent = session.address;
+  sessionExpired = !!session.expired;
+  if (!ttlTimer && !sessionExpired) startTtl(session.expiresAt);
 
   (session.mails || []).forEach((mail, i) => {
     const key = mail.queueId || mail.incomingDir || String(i);
     if (renderedMails.has(key)) return; // 이미 그린 카드는 재생성하지 않음 (열림/닫힘 보존)
     renderedMails.add(key);
-    mailsEl.insertAdjacentHTML('beforeend', mailCard(mail, renderedMails.size));
+    // 최신 결과가 위로 오도록 prepend
+    mailsEl.insertAdjacentHTML('afterbegin', mailCard(mail, renderedMails.size));
   });
+
+  updateStepper();
 
   if (session.expired) {
     stopPolling();
-    statusEl.innerHTML = '<div class="banner expired">이 세션은 만료되었습니다. 새로 도착하는 메일은 더 이상 진단되지 않습니다'
+    stopTtl();
+    ttlEl.textContent = '수신 마감';
+    ttlEl.classList.add('low');
+    statusEl.innerHTML = '<div class="banner expired">이 주소는 수신이 마감되었습니다. 새로 도착하는 메일은 더 이상 진단되지 않습니다'
       + (renderedMails.size ? ' — 아래 기존 결과는 계속 열람할 수 있습니다.' : '. 새 주소를 발급받아 다시 테스트하세요.')
       + '</div>';
   } else if (renderedMails.size === 0) {
     statusEl.innerHTML = '<div class="banner wait"><span class="spin"></span>메일 대기 중 — 위 주소로 테스트 메일을 보내면 잠시 후 결과가 자동으로 표시됩니다.</div>';
   } else {
-    statusEl.innerHTML = '<div class="banner wait"><span class="spin"></span>추가 메일 대기 중 — 같은 주소로 다른 서버에서 보내면 카드가 추가됩니다.</div>';
+    statusEl.innerHTML = '<div class="banner wait"><span class="spin"></span>추가 메일 대기 중 — 같은 주소로 다른 서버에서 보내면 결과가 위에 추가됩니다.</div>';
   }
 }
 
-// ---- 메일 카드 렌더링 ----
+// ---- 진단 결과 카드 ----
 
 function mailCard(mail, seq) {
   const received = mail.receivedAt ? new Date(mail.receivedAt).toLocaleString() : '';
-  const meta = [
-    received && ('수신 ' + received),
-    mail.clientIp && ('발신 IP ' + mail.clientIp),
-    mail.mailFrom ? ('MAIL FROM ' + mail.mailFrom) : 'MAIL FROM 없음(bounce)',
-    mail.helo && ('HELO ' + mail.helo)
-  ].filter(Boolean).map(esc).join(' · ');
+  const kv = [
+    received && ['수신', received],
+    mail.clientIp && ['발신 IP', mail.clientIp],
+    ['MAIL FROM', mail.mailFrom || '없음 (bounce)'],
+    mail.helo && ['HELO', mail.helo]
+  ].filter(Boolean)
+   .map(([k, v]) => '<span class="kv"><b>' + esc(k) + '</b>' + esc(v) + '</span>')
+   .join('');
 
-  let title, body;
+  let title, verdict, body;
   if (mail.status === 'DIAGNOSED') {
     title = esc(mail.fromDomain || mail.report.domain);
+    verdict = verdictBadge(mail.report);
     body = renderReport(mail.report);
   } else if (mail.status === 'REJECTED_PRIVATE_IP') {
     title = '진단 불가 (내부망 발신)';
+    verdict = '<span class="verdict bad">진단 불가</span>';
     body = '<div class="note-box">' + esc(mail.note || '') + '</div>';
   } else {
     title = '진단 실패';
+    verdict = '<span class="verdict bad">실패</span>';
     body = '<div class="note-box">' + esc(mail.note || '진단을 완료하지 못했습니다.') + '</div>';
   }
 
   return '<div class="mail-card">'
-    + '<div class="mail-head"><span class="mail-title">메일 #' + seq + ' — ' + title + '</span></div>'
-    + '<div class="mail-meta">' + meta + '</div>'
+    + '<div class="mail-head"><span class="mail-title">' + title + '</span>' + verdict
+    + '<span class="mail-seq">#' + seq + '</span></div>'
+    + '<div class="kv-row">' + kv + '</div>'
     + body
     + '</div>';
+}
+
+function verdictBadge(report) {
+  const c = { FAIL: 0, ERROR: 0, WARN: 0 };
+  report.results.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
+  const bad = c.FAIL + c.ERROR;
+  if (bad) return '<span class="verdict bad">문제 ' + bad + '건</span>';
+  if (c.WARN) return '<span class="verdict warn">주의 ' + c.WARN + '건</span>';
+  return '<span class="verdict ok">모두 통과</span>';
 }
 
 function renderReport(report) {
   const counts = {};
   report.results.forEach(r => counts[r.status] = (counts[r.status] || 0) + 1);
-  const chips = Object.entries(counts)
-    .map(([s, n]) => '<span class="chip"><b style="color:' + COLORS[s] + '">' + s + '</b> ' + n + '</span>')
+  const chips = STATUS_ORDER.filter(s => counts[s])
+    .map(s => '<span class="chip" style="color:' + STATUS_META[s].color + ';background:' + STATUS_META[s].soft + '">'
+      + STATUS_META[s].label + ' ' + counts[s] + '</span>')
     .join('');
 
   const ipInfo = report.targetIps && report.targetIps.length
     ? 'PTR/RBL 대상 IP: ' + esc(report.targetIps.join(', ')) + ' — ' + esc(report.targetIpSource)
     : 'PTR/RBL 대상 IP 확인 불가';
 
-  let html = '<div class="summary" style="margin-top:10px">' + chips + '</div>'
-    + '<p class="meta">' + esc(report.domain) + ' · ' + ipInfo + ' · 총 ' + report.totalElapsedMs + 'ms</p>';
+  // 문제(FAIL·ERROR·WARN) 항목이 위로 오도록 정렬 — 같은 상태끼리는 원래 순서 유지
+  const sorted = report.results
+    .map((r, i) => [r, i])
+    .sort((a, b) => (STATUS_ORDER.indexOf(a[0].status) - STATUS_ORDER.indexOf(b[0].status)) || (a[1] - b[1]))
+    .map(([r]) => r);
 
-  for (const r of report.results) {
-    // Problem cards (WARN included) start expanded; PASS/SKIP stay collapsed until clicked.
+  let html = '<div class="chips">' + chips + '</div>';
+
+  for (const r of sorted) {
+    const m = STATUS_META[r.status] || STATUS_META.SKIP;
+    // 문제 카드(WARN 포함)는 펼친 채로 시작, PASS/SKIP은 클릭 전까지 접힘
     const open = (r.status === 'FAIL' || r.status === 'ERROR' || r.status === 'WARN') ? ' open' : '';
     const peek = r.evidence.length ? r.evidence[0] : '';
     html += '<details class="card"' + open + '>'
-      + '<summary><span class="badge" style="background:' + COLORS[r.status] + '">' + r.status + '</span>'
+      + '<summary>'
+      + '<span class="slabel" style="color:' + m.color + ';background:' + m.soft + '">' + m.label + '</span>'
       + esc(r.title)
-      + (peek ? '<span class="peek">' + esc(peek) + '</span>' : '')
-      + '<span class="elapsed">' + r.elapsedMs + 'ms</span>'
+      + '<span class="peek">' + (peek ? esc(peek) : '') + '</span>'
       + '<span class="chev">▶</span></summary>'
       + '<div class="detail">';
     if (r.evidence.length) {
@@ -245,10 +455,12 @@ function renderReport(report) {
         + r.guidance.map(g => '<li>' + esc(g) + '</li>').join('') + '</ul></div>';
     }
     if (!r.evidence.length && !r.guidance.length) {
-      html += '<p class="hint" style="margin:12px 0 0">추가 상세 정보가 없습니다.</p>';
+      html += '<p style="margin:10px 0 0;color:var(--muted)">추가 상세 정보가 없습니다.</p>';
     }
     html += '</div></details>';
   }
+
+  html += '<p class="report-meta">' + esc(report.domain) + ' · ' + ipInfo + ' · 총 ' + report.totalElapsedMs + 'ms</p>';
   return html;
 }
 
@@ -267,9 +479,7 @@ function renderReport(report) {
       return;
     }
     if (!res.ok) throw new Error('요청 실패 (' + res.status + ')');
-    const session = await res.json();
-    applySession(session);
-    if (!session.expired) pollTimer = setInterval(poll, POLL_MS);
+    enterSession(await res.json());
   } catch (err) {
     backToIssue('<div class="err-box">세션을 불러오지 못했습니다: ' + esc(err.message) + '</div>');
   }
