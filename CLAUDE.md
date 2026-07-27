@@ -31,7 +31,7 @@
 - **checker-web** — Spring Boot REST API + 정적 UI. 빈 조립 + `@Scheduled` 폴러 + REST만.
   - `POST /api/v1/sessions` → 201 `{id, address, createdAt, expiresAt, expired, mails:[]}` / `GET /api/v1/sessions/{id}` → 동일 스키마(404는 `{"error":...}`). `expired: true`는 수신 매칭만 중단됐다는 뜻 — 결과는 계속 조회 가능
   - 조립: `MailPipelineConfig`(@EnableScheduling, checker-mail 빈), `IntakeScheduler`(`mailcheck.intake.enabled` 조건부, `poll-interval` fixedDelay), 기존 `CheckerConfig`(검사 빈)
-  - UI: `resources/static/index.html` (vanilla JS, 프레임워크 없음). 주소 발급 → `/?s={id}`로 URL 교체 → 4초 폴링, `queueId` 키 append-only 카드(열림/닫힘 보존). 검사 카드는 `<details>` 아코디언 — PASS/SKIP은 접힘, 문제 상태(FAIL/ERROR/WARN)는 자동 펼침. REJECTED/FAILED는 note 카드
+  - UI: `resources/static/index.html` (vanilla JS, 프레임워크 없음). 주소 발급 → `/?s={id}`로 URL 교체 → 4초 폴링, `queueId` 키 append-only 카드(열림/닫힘 보존). 검사 카드는 `<details>` 아코디언 — PASS/SKIP은 접힘, 문제 상태(FAIL/ERROR/WARN)는 자동 펼침. REJECTED/FAILED는 note 카드. 세션 복원 실패(404·네트워크 오류)는 `backToIssue()`로 세션 영역을 되돌리고 발급 화면 복귀 — 빈 주소 박스가 남지 않게
   - 주의: bootRun을 백그라운드로 띄웠다 중단하면 자식 java 프로세스가 고아로 남아 8080을 점유할 수 있음 — `Get-NetTCPConnection -LocalPort 8080`으로 확인 후 종료
   - 설정: `application.yml` — 타임아웃, RBL 활성화, 전파 검사 리졸버 목록, `mailcheck.intake.{enabled, incoming-dir, data-dir, mail-domain, poll-interval, session-ttl}` (로컬 개발은 `application-local.yml`에서 Windows 경로로 override — 템플릿 참고)
   - 비밀값(Spamhaus DQS 키): 로컬은 `application-local.yml`(gitignore 대상, 템플릿은 `application-local.yml.example`), 배포는 `SPAMHAUS_DQS_KEY` 환경변수. `bootRun`은 build.gradle에서 기본 `local` 프로필로 실행

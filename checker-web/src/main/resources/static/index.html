@@ -130,6 +130,15 @@ function enterSession(session) {
   pollTimer = setInterval(poll, POLL_MS);
 }
 
+// 세션 복원 실패 — 빈 주소 박스가 남지 않도록 세션 영역을 되돌리고 발급 화면으로 복귀
+function backToIssue(errHtml) {
+  stopPolling();
+  statusEl.innerHTML = '';
+  sessionArea.hidden = true;
+  issueArea.hidden = false;
+  issueArea.insertAdjacentHTML('beforeend', errHtml);
+}
+
 async function poll() {
   const sid = new URLSearchParams(location.search).get('s');
   if (!sid) return stopPolling();
@@ -254,8 +263,7 @@ function renderReport(report) {
   try {
     const res = await fetch('/api/v1/sessions/' + encodeURIComponent(sid));
     if (res.status === 404) {
-      statusEl.innerHTML = '<div class="err-box">세션을 찾을 수 없습니다. 새 주소를 발급받으세요.</div>';
-      issueArea.hidden = false;
+      backToIssue('<div class="err-box">세션을 찾을 수 없습니다. 새 주소를 발급받으세요.</div>');
       return;
     }
     if (!res.ok) throw new Error('요청 실패 (' + res.status + ')');
@@ -263,8 +271,7 @@ function renderReport(report) {
     applySession(session);
     if (!session.expired) pollTimer = setInterval(poll, POLL_MS);
   } catch (err) {
-    statusEl.innerHTML = '<div class="err-box">세션을 불러오지 못했습니다: ' + esc(err.message) + '</div>';
-    issueArea.hidden = false;
+    backToIssue('<div class="err-box">세션을 불러오지 못했습니다: ' + esc(err.message) + '</div>');
   }
 })();
 </script>
