@@ -10,8 +10,10 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
-    // From: 헤더 전용 lenient 파싱 (M8 jDKIM도 mime4j 기반 — 스택 충돌 없음)
+    // From: 헤더 전용 lenient 파싱 (jDKIM도 mime4j 기반 — 스택 충돌 없음)
     implementation 'org.apache.james:apache-mime4j-dom:0.8.11'
+    // DKIM 서명 검증 (M8) — dnsjava 3.6.3·mime4j 0.8.x로 checker-core/mail 스택과 정렬
+    implementation 'org.apache.james.jdkim:apache-jdkim-library:0.5'
     implementation 'org.slf4j:slf4j-api:2.0.17'
 
     testImplementation platform('org.junit:junit-bom:5.12.2')

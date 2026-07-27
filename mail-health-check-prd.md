@@ -4,7 +4,7 @@
   - v1.5 (2026-07-28, **M7 실메일 파이프라인 구현 완료 반영** — 구현 중 확정 사항 문서화: 파일 기반 세션 저장(DB 없음), 결과 페이지 폴링 갱신, 세션 TTL 24h(수신 매칭 기준·만료 후 결과 열람 유지), jSPF 불채택(자체 구현 유지), SMTP 수신은 pipe 방식 확정)
   - v1.4 (2026-07-26, **실메일 단일 진입점으로 전환** — 도메인/IP 입력 폼을 폐지하고 테스트 메일 수신 기반 자동 진단으로 개편. 기존 1단계/2단계 구도 폐지, DNS 검사 엔진은 수신 파이프라인이 자동 호출하는 내부 구현으로 흡수)
 - **작성 목적**: 개인 개발 → 사내 도입 경로의 메일 서버 설정 진단 도구 개발 기준 문서
-- **상태**: 개발 진행 중 — DNS 검사 엔진(구 M1~M5.5) + 실메일 파이프라인(M7: 주소 발급→수집 폴링→자동 진단→결과 누적, QA 완료) 구현 완료. 남은 것: 서버 배포 스모크(M9 일부 선행), M6 잔여(unbound·RCPT 토큰 검증 등), M8(헤더 기반 검사 + 구 PR #1 이관 항목 — `m8-backlog.md`)
+- **상태**: 개발 진행 중 — DNS 검사 엔진(구 M1~M5.5) + 실메일 파이프라인(M7, QA 완료) + **M8 헤더 기반 검사·이관 항목 구현 완료**(2026-07-28: DKIM 서명 검증(jDKIM)·HELO/PTR 일치·DMARC alignment 실검증·헤더 품질 + DMARC 외부 리포트 승인·제네릭 PTR 경고·MTA-STS/TLS-RPT·RBL IPv6). 남은 것: 서버 배포 스모크(M9 일부 선행), M6 잔여(unbound·RCPT 토큰 검증 등)
 
 ---
 
@@ -82,7 +82,7 @@
 | 백엔드 | Java / Spring Boot | |
 | DNS | **dnsjava** (org.xbill.DNS) | 커스텀 리졸버 지정(DQS), 레코드 타입·타임아웃 제어 필수라 `InetAddress` 불가 |
 | SPF | **자체 구현** (jSPF 불채택 — M2~M7에서 파서·lookup 카운터·check_host 평가기 완성) | 매크로 확장·10-lookup/void 카운팅·실세션 평가까지 자체 구현으로 커버, 단위 테스트로 엣지케이스 고정 |
-| DKIM | Apache James **jDKIM** (M8 예정) | 서명 검증에 사용. mime4j 기반이라 M7의 From 파싱(mime4j-dom)과 스택 일치 |
+| DKIM | Apache James **jDKIM 0.5** (M8 채택 완료) | 서명 검증에 사용. dnsjava 3.6.3·mime4j 0.8.x 기반이라 기존 스택과 일치. 공개키 조회는 `DnsQueryService` 경유(자체 `PublicKeyRecordRetriever`)로 네트워크 격리 원칙 유지 |
 | SMTP 수신 | **기존 운영 중인 Postfix 연동** (홈서버) | **pipe transport로 확정**(M6) — 세션 값을 명령행 인자로, 원본을 stdin으로 수집기에 전달해 파일 적재. 미발급 주소의 RCPT 단계 거부는 Postfix policy service(`check_recipient_access`)로 앱에 위임 가능(M6 잔여). 릴레이 금지 유지 |
 | 메일 파싱 | Apache **mime4j-dom** | From: 헤더 전용 lenient 파싱 (display name/quoted/folding/group). jakarta.mail 불채택 |
 | 세션·결과 저장 | **파일 기반 JSON** (DB 없음) | `{data-dir}/sessions/{uuid}.json` — 토큰 `check-{uuid}`에서 파일 직접 도출(인덱스 불필요), temp+ATOMIC_MOVE로 재시작 내구성. 재처리 방지는 append-only `processed.log` |
@@ -136,5 +136,5 @@
 6. ~~**M5.5**: RBL 커버리지 확대(PSBL·Mailspike·Hostkarma) + Spamhaus DBL 도메인 검사 + SPF check_host 평가~~ ✅
 7. **M6**: 수신 인프라 — **핵심 구축·검증 완료**(2026-07-26, 상세·연동 계약은 `infra-work.md`): `mail-check.yonggeon.kr` MX 구성, 진단 전용 Postfix smtpd 분리, pipe→수집기(원본+세션 파일 적재), 외부 수신·릴레이 차단·원본 무손상 검증. **잔여**: RBL 조회 정상화 — Spamhaus(ZEN·DBL)는 DQS로 해결(키 발급 완료 2026-07-27), 비-Spamhaus 존(Barracuda·SpamCop·PSBL·Mailspike·Hostkarma)용 unbound 재귀 리졸버 설치(포워딩 모드 금지) + Barracuda 조회 IP 등록, RCPT 시점 토큰 검증(policy service), 주소 발급/세션 관리(웹), 처리분 정리 정책, postscreen·인증서
 8. ~~**M7**: 실메일 파이프라인 — 수신 원문·세션 정보 → 도메인/IP 추출 → 기존 검사 엔진 자동 실행 → 결과 페이지(발송 건별 누적). **기존 도메인/IP 입력 폼 및 `?domain=&ip=` API 제거**~~ ✅ (2026-07-27 구현·QA 완료, 계획서 `m7-plan.md`: 신규 `checker-mail` 모듈 + `POST/GET /api/v1/sessions` API + 폴링 UI + SPF 실세션 평가. 사설 IP(헤어핀 NAT)는 진단 거부 카드, 미발급 토큰은 스킵. 서버 배포 스모크는 M9에서)
-9. **M8**: 헤더 기반 검사 — DKIM 서명 검증(jDKIM), HELO/PTR 일치, DMARC alignment 실검증, 헤더 품질. **+ 구 PR #1 이관 항목**(M7 전환으로 기반을 잃어 재구현 — 판정·원본 커밋은 `m8-backlog.md`): DMARC 외부 리포트 승인·제네릭 PTR 경고·MTA-STS/TLS-RPT는 그대로 이식, RBL IPv6는 범위 축소 재작성, 사설 IP 입력 검증은 M7 `IpClassifier`가 대체해 폐기
+9. ~~**M8**: 헤더 기반 검사 — DKIM 서명 검증(jDKIM), HELO/PTR 일치, DMARC alignment 실검증, 헤더 품질. **+ 구 PR #1 이관 항목**(M7 전환으로 기반을 잃어 재구현 — 판정·원본 커밋은 `m8-backlog.md`): DMARC 외부 리포트 승인·제네릭 PTR 경고·MTA-STS/TLS-RPT는 그대로 이식, RBL IPv6는 범위 축소 재작성, 사설 IP 입력 검증은 M7 `IpClassifier`가 대체해 폐기~~ ✅ (2026-07-28 구현 완료 — eml 기반 검사(DKIM·alignment·헤더 품질)는 `checker-mail`의 `mail.check.*`로 배치, jDKIM 0.5 채택, `CheckContext.emlPath`로 원문 접근)
 10. **M9**: 배포 + 사내 공유, 실사용 지표 수집 시작

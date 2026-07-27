@@ -1,5 +1,6 @@
 package io.github.potwings.mailcheck.check.ptr;
 
+import com.google.common.net.InetAddresses;
 import io.github.potwings.mailcheck.api.Check;
 import io.github.potwings.mailcheck.api.CheckContext;
 import io.github.potwings.mailcheck.api.CheckResult;
@@ -9,13 +10,17 @@ import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * PTR existence + Forward-Confirmed reverse DNS: PTR → hostname → A/AAAA must
  * come back to the original IP. Runs per target IP and keeps the worst status;
  * guidance is emitted once per failure kind, not per IP.
- * HELO matching needs an SMTP session → stage 2.
+ * With a mail session the claimed HELO/EHLO name is compared to the PTR hostnames.
  */
 public class PtrCheck implements Check {
 
@@ -51,6 +56,8 @@ public class PtrCheck implements Check {
         boolean anyMissingPtr = false;
         boolean anyMultiPtr = false;
         boolean anyFcrdnsFail = false;
+        boolean anyGeneric = false;
+        Set<String> allPtrHosts = new LinkedHashSet<>();
         for (String ip : ips) {
             // Prefix evidence with the IP only when there are several, so single-IP output stays clean.
             String tag = ips.size() > 1 ? "[" + ip + "] " : "";
@@ -68,17 +75,27 @@ public class PtrCheck implements Check {
             }
 
             List<String> hosts = ptr.values();
+            hosts.forEach(h -> allPtrHosts.add(normalizeHost(h)));
             if (hosts.size() > 1) {
                 anyMultiPtr = true;
                 b.atLeast(CheckStatus.WARN)
                         .evidence(tag + "PTR 레코드가 " + hosts.size() + "개 — 일부 수신 서버는 다중 PTR을 불신함");
             }
 
+            List<String> generic = hosts.stream().filter(h -> looksGeneric(h, ip)).toList();
+            if (!generic.isEmpty()) {
+                anyGeneric = true;
+                b.atLeast(CheckStatus.WARN)
+                        .evidence(tag + "PTR 호스트명이 ISP 기본(제네릭/동적) 패턴으로 보임: " + String.join(", ", generic));
+            }
+
             boolean ipv6 = ip.contains(":");
+            // IPv6 표기는 압축/완전형이 섞이므로 문자열이 아닌 정규형(RFC 5952)으로 비교
+            String canonicalTarget = canonicalIp(ip);
             List<String> confirmed = new ArrayList<>();
             for (String host : hosts) {
                 DnsAnswer forward = dns.query(host, ipv6 ? RecordType.AAAA : RecordType.A);
-                if (forward.values().contains(ip)) {
+                if (forward.values().stream().anyMatch(v -> canonicalIp(v).equals(canonicalTarget))) {
                     confirmed.add(host);
                 } else {
                     b.evidence(tag + "정방향 확인 실패: " + host + " → " +
@@ -104,8 +121,84 @@ public class PtrCheck implements Check {
         if (anyFcrdnsFail) {
             b.guidance("PTR이 가리키는 호스트명의 A/AAAA 레코드가 원래 IP로 되돌아오도록 정/역방향을 맞추세요 (FCrDNS)");
         }
+        if (anyGeneric) {
+            b.guidance("제네릭/동적 패턴의 PTR은 FCrDNS가 성립해도 다수 수신 서버가 스팸 신호로 취급합니다 — "
+                    + "mail.<도메인> 형태의 전용 호스트명으로 역방향 DNS를 변경하세요");
+        }
 
-        b.evidence("※ HELO/EHLO 명과 PTR 일치 여부는 SMTP 세션이 필요해 2단계(실메일 모드)에서 검사");
+        compareHelo(ctx, allPtrHosts, b);
         return b.build();
+    }
+
+    /** HELO/EHLO vs PTR hostname — receivers score a mismatch as a spam signal. */
+    private static void compareHelo(CheckContext ctx, Set<String> ptrHosts, CheckResult.Builder b) {
+        if (!ctx.hasMailSession()) {
+            b.evidence("※ HELO/EHLO 명과 PTR 일치 여부는 SMTP 세션이 필요해 실메일 모드에서 검사");
+            return;
+        }
+        String rawHelo = ctx.mailSession().helo();
+        String helo = rawHelo == null ? "" : normalizeHost(rawHelo);
+        if (helo.isEmpty()) {
+            b.evidence("세션에 HELO 값이 없어 PTR과 비교하지 못함");
+            return;
+        }
+        if (helo.startsWith("[")) {
+            b.atLeast(CheckStatus.WARN)
+                    .evidence("HELO가 주소 리터럴(" + helo + ") — 다수 수신 서버가 스팸 신호로 취급")
+                    .guidance("발신 서버의 HELO/EHLO 명을 PTR과 일치하는 FQDN으로 설정하세요");
+            return;
+        }
+        if (ptrHosts.isEmpty()) {
+            b.evidence("PTR 호스트명이 없어 HELO(" + helo + ")와 비교하지 못함");
+            return;
+        }
+        if (ptrHosts.contains(helo)) {
+            b.evidence("HELO(" + helo + ")와 PTR 호스트명 일치");
+        } else {
+            b.atLeast(CheckStatus.WARN)
+                    .evidence("HELO(" + helo + ")가 PTR 호스트명(" + String.join(", ", ptrHosts)
+                            + ")과 일치하지 않음 — 일부 수신 서버가 스팸 신호로 취급")
+                    .guidance("발신 서버의 HELO/EHLO 명을 PTR 호스트명과 일치시키세요 (Postfix: myhostname)");
+        }
+    }
+
+    private static String normalizeHost(String host) {
+        String h = host.trim().toLowerCase(Locale.ROOT);
+        return h.endsWith(".") ? h.substring(0, h.length() - 1) : h;
+    }
+
+    /** RFC 5952 canonical form so "2001:db8::1" and "2001:db8:0:0:0:0:0:1" compare equal. */
+    static String canonicalIp(String ip) {
+        try {
+            return InetAddresses.toAddrString(InetAddresses.forString(ip));
+        } catch (IllegalArgumentException e) {
+            return ip.toLowerCase(Locale.ROOT);
+        }
+    }
+
+    private static final Set<String> GENERIC_TOKENS = Set.of(
+            "dynamic", "dyn", "dhcp", "pool", "ppp", "pppoe", "dsl", "adsl", "dialup", "cable");
+
+    /** Heuristic for ISP-default reverse names: generic keywords, or the IP's octets embedded in order. */
+    static boolean looksGeneric(String host, String ip) {
+        List<String> tokens = Arrays.stream(host.toLowerCase(Locale.ROOT).split("[.\\-_]"))
+                .map(t -> t.replaceFirst("^0+(?=.)", "")) // "090" → "90" 형태의 제로 패딩 무시
+                .toList();
+        if (tokens.stream().anyMatch(GENERIC_TOKENS::contains)) {
+            return true;
+        }
+        if (ip.contains(":")) {
+            return false;
+        }
+        String[] o = ip.split("\\.");
+        List<String> fwd = List.of(o[0], o[1], o[2], o[3]);
+        List<String> rev = List.of(o[3], o[2], o[1], o[0]);
+        for (int i = 0; i + 4 <= tokens.size(); i++) {
+            List<String> window = tokens.subList(i, i + 4);
+            if (window.equals(fwd) || window.equals(rev)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

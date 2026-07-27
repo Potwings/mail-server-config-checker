@@ -1,6 +1,11 @@
 package io.github.potwings.mailcheck.web.config;
 
+import io.github.potwings.mailcheck.check.dmarc.OrgDomainResolver;
+import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.engine.CheckEngine;
+import io.github.potwings.mailcheck.mail.check.dkim.DkimCheck;
+import io.github.potwings.mailcheck.mail.check.dmarc.DmarcAlignmentCheck;
+import io.github.potwings.mailcheck.mail.check.header.HeaderQualityCheck;
 import io.github.potwings.mailcheck.mail.eml.FromHeaderExtractor;
 import io.github.potwings.mailcheck.mail.intake.MailIntakeService;
 import io.github.potwings.mailcheck.mail.intake.ProcessedLog;
@@ -34,6 +39,22 @@ public class MailPipelineConfig {
     @Bean
     public FromHeaderExtractor fromHeaderExtractor() {
         return new FromHeaderExtractor();
+    }
+
+    // 실메일 원문(message.eml)이 있어야 동작하는 검사들 — 엔진에는 다른 Check와 동일하게 수집됨
+    @Bean
+    public DkimCheck dkimCheck(DnsQueryService dns) {
+        return new DkimCheck(dns);
+    }
+
+    @Bean
+    public DmarcAlignmentCheck dmarcAlignmentCheck(DnsQueryService dns, OrgDomainResolver orgResolver) {
+        return new DmarcAlignmentCheck(dns, orgResolver);
+    }
+
+    @Bean
+    public HeaderQualityCheck headerQualityCheck() {
+        return new HeaderQualityCheck();
     }
 
     @Bean

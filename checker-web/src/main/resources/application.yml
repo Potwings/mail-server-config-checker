@@ -1,6 +1,7 @@
 mailcheck:
   dns-timeout: 3s
   check-timeout: 12s
+  mta-sts-http-timeout: 5s
   intake:
     enabled: true
     incoming-dir: /var/lib/maildiag/incoming

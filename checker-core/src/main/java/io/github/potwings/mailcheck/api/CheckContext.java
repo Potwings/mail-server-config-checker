@@ -1,5 +1,6 @@
 package io.github.potwings.mailcheck.api;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 
@@ -14,9 +15,12 @@ import java.util.Locale;
  *                        outbound IPs, so evaluating them would mislead)
  * @param mailSession     SMTP session values captured from a real test mail; null when the
  *                        diagnosis was not triggered by a received mail
+ * @param emlPath         byte-exact original of the received mail (message.eml); null when
+ *                        no mail is available — checks needing the raw message (DKIM,
+ *                        header quality, DMARC alignment) SKIP then
  */
 public record CheckContext(String domain, List<String> targetIps, String targetIpSource,
-                           boolean ipsUserProvided, MailSession mailSession) {
+                           boolean ipsUserProvided, MailSession mailSession, Path emlPath) {
 
     /**
      * Envelope values from the live SMTP session that delivered the test mail.
@@ -49,12 +53,17 @@ public record CheckContext(String domain, List<String> targetIps, String targetI
     }
 
     public CheckContext(String domain, List<String> targetIps, String targetIpSource,
+                        boolean ipsUserProvided, MailSession mailSession) {
+        this(domain, targetIps, targetIpSource, ipsUserProvided, mailSession, null);
+    }
+
+    public CheckContext(String domain, List<String> targetIps, String targetIpSource,
                         boolean ipsUserProvided) {
-        this(domain, targetIps, targetIpSource, ipsUserProvided, null);
+        this(domain, targetIps, targetIpSource, ipsUserProvided, null, null);
     }
 
     public CheckContext(String domain, List<String> targetIps, String targetIpSource) {
-        this(domain, targetIps, targetIpSource, false, null);
+        this(domain, targetIps, targetIpSource, false, null, null);
     }
 
     public boolean hasTargetIps() {
@@ -63,5 +72,9 @@ public record CheckContext(String domain, List<String> targetIps, String targetI
 
     public boolean hasMailSession() {
         return mailSession != null;
+    }
+
+    public boolean hasEml() {
+        return emlPath != null;
     }
 }

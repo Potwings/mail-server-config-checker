@@ -9,6 +9,7 @@ import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -138,6 +139,8 @@ public class DmarcCheck implements Check {
             b.evidence("실패 리포트 ruf=" + tags.get("ruf"));
         }
 
+        verifyExternalReportDestinations(tags, policyDomain, b);
+
         if (tags.containsKey("pct")) {
             try {
                 int pct = Integer.parseInt(tags.get("pct"));
@@ -154,6 +157,64 @@ public class DmarcCheck implements Check {
         describeAlignment(tags, "aspf", "SPF", b);
 
         return b.build();
+    }
+
+    /**
+     * RFC 7489 §7.1 — a rua/ruf destination in another organization must publish
+     * {@code <policyDomain>._report._dmarc.<destination>} TXT, or receivers
+     * silently drop the reports.
+     */
+    private void verifyExternalReportDestinations(Map<String, String> tags, String policyDomain, CheckResult.Builder b) {
+        String policyOrg = orgResolver.organizationalDomain(policyDomain).toLowerCase(Locale.ROOT);
+        Set<String> externals = new LinkedHashSet<>();
+        for (String tag : List.of("rua", "ruf")) {
+            String value = tags.get(tag);
+            if (value == null) {
+                continue;
+            }
+            for (String uri : value.split(",")) {
+                String u = uri.trim().toLowerCase(Locale.ROOT);
+                if (!u.startsWith("mailto:")) {
+                    continue;
+                }
+                String addr = u.substring("mailto:".length());
+                int bang = addr.indexOf('!'); // mailto:a@b.com!10m — 리포트 크기 제한 접미사
+                if (bang >= 0) {
+                    addr = addr.substring(0, bang);
+                }
+                int at = addr.lastIndexOf('@');
+                if (at <= 0 || at == addr.length() - 1) {
+                    continue;
+                }
+                String dest = addr.substring(at + 1);
+                if (!orgResolver.organizationalDomain(dest).toLowerCase(Locale.ROOT).equals(policyOrg)) {
+                    externals.add(dest);
+                }
+            }
+        }
+
+        boolean anyMissing = false;
+        for (String dest : externals) {
+            String qname = policyDomain + "._report._dmarc." + dest;
+            DnsAnswer ans = dns.query(qname, RecordType.TXT);
+            if (ans.failed()) {
+                b.atLeast(CheckStatus.WARN)
+                        .evidence("외부 리포트 승인 확인 불가: " + qname + " TXT 조회 실패 (" + ans.rcode() + ")");
+                continue;
+            }
+            if (ans.values().stream().anyMatch(DmarcCheck::isDmarcRecord)) {
+                b.evidence("외부 리포트 승인 확인: " + dest + " 가 " + policyDomain + " 의 리포트 수신을 승인함");
+            } else {
+                anyMissing = true;
+                b.atLeast(CheckStatus.WARN)
+                        .evidence("외부 리포트 승인 레코드 없음: " + qname + " TXT — " + dest
+                                + " 수신 서버가 리포트를 조용히 폐기함 (RFC 7489 §7.1)");
+            }
+        }
+        if (anyMissing) {
+            b.guidance("리포트 수신 도메인의 DNS에 <정책도메인>._report._dmarc.<수신도메인> TXT \"v=DMARC1\" 레코드를 추가하세요. "
+                    + "외부 DMARC 리포트 서비스를 쓴다면 해당 서비스의 승인 레코드 등록 안내를 따르세요");
+        }
     }
 
     private static void describeAlignment(Map<String, String> tags, String tag, String label, CheckResult.Builder b) {

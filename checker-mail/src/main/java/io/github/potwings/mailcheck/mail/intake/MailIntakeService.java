@@ -145,7 +145,8 @@ public class MailIntakeService {
         try {
             CheckContext ctx = new CheckContext(fromDomain.get(), List.of(meta.clientIp()),
                     "SMTP 세션 접속 IP", true,
-                    new CheckContext.MailSession(meta.mailFrom(), meta.helo()));
+                    new CheckContext.MailSession(meta.mailFrom(), meta.helo()),
+                    dir.resolve("message.eml"));
             DiagnosisReport report = engine.diagnose(ctx);
             return result(meta, dirName, fromDomain.get(), MailResultStatus.DIAGNOSED, null, report);
         } catch (Exception e) {

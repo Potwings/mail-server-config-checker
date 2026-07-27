@@ -9,6 +9,7 @@ import java.util.List;
 public record MailcheckProperties(
         Duration dnsTimeout,
         Duration checkTimeout,
+        Duration mtaStsHttpTimeout,
         Rbl rbl,
         List<String> propagationResolvers,
         Intake intake) {
