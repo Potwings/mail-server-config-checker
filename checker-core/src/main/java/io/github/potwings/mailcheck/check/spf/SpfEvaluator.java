@@ -20,14 +20,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * RFC 7208 check_host() evaluation for a declared sending IP. This is a config
- * check, not a live SMTP session: the synthetic sender is postmaster@&lt;domain&gt;,
- * so %{s}/%{l}/%{o} expand from it, while session-only macros (%{h}, %{p}, ...)
- * make that one mechanism un-evaluable — it is skipped with a note.
+ * RFC 7208 check_host() evaluation for a declared sending IP. Without a live
+ * SMTP session the synthetic sender is postmaster@&lt;domain&gt;, so %{s}/%{l}/%{o}
+ * expand from it and session-only macros (%{h}, %{p}, ...) make that one
+ * mechanism un-evaluable — it is skipped with a note. With a session the real
+ * sender and HELO feed %{s}/%{l}/%{o}/%{h}; only %{p} stays excluded.
  */
 public class SpfEvaluator {
 
     public enum Verdict { PASS, FAIL, SOFTFAIL, NEUTRAL, PERMERROR, TEMPERROR }
+
+    /**
+     * Live SMTP session values for macro expansion.
+     *
+     * @param sender full envelope sender; for a bounce use postmaster@&lt;helo&gt;
+     *               per RFC 7208 §2.4
+     * @param helo   HELO/EHLO name as claimed by the client; null when unknown
+     */
+    public record SmtpSession(String sender, String helo) {
+    }
 
     /**
      * @param matched the deciding mechanism as written in the record (null when the
@@ -48,7 +59,12 @@ public class SpfEvaluator {
     }
 
     public Evaluation evaluate(String ip, String domain, List<SpfTerm> terms) {
+        return evaluate(ip, domain, terms, null);
+    }
+
+    public Evaluation evaluate(String ip, String domain, List<SpfTerm> terms, SmtpSession session) {
         State st = new State();
+        st.session = session;
         try {
             st.ip = InetAddress.getByName(ip);
         } catch (UnknownHostException e) {
@@ -70,6 +86,7 @@ public class SpfEvaluator {
         InetAddress ip;
         String ipLiteral;
         boolean ipv6;
+        SmtpSession session;
         int lookups;
         int voids;
         boolean lastLookupVoid;
@@ -511,11 +528,12 @@ public class SpfEvaluator {
                              String domain, State st) {
         String raw = switch (Character.toLowerCase(letter)) {
             case 'd' -> domain;
-            case 'o' -> domain;                       // synthetic sender: postmaster@<domain>
-            case 's' -> "postmaster@" + domain;
-            case 'l' -> "postmaster";
+            case 'o' -> senderDomain(st, domain);
+            case 's' -> sender(st, domain);
+            case 'l' -> senderLocalPart(st);
             case 'i' -> ipMacro(st);
             case 'v' -> st.ipv6 ? "ip6" : "in-addr";
+            case 'h' -> helo(st);
             default -> null;
         };
         if (raw == null) {
@@ -533,6 +551,39 @@ public class SpfEvaluator {
             }
         }
         return String.join(".", labels);
+    }
+
+    // Session-backed macro sources: fall back to the synthetic postmaster@<domain>
+    // sender when no session was supplied; %{h} has no synthetic substitute.
+
+    private static String sender(State st, String domain) {
+        if (st.session != null && st.session.sender() != null && !st.session.sender().isBlank()) {
+            return st.session.sender();
+        }
+        return "postmaster@" + domain;
+    }
+
+    private static String senderLocalPart(State st) {
+        String s = sender(st, "");
+        int at = s.lastIndexOf('@');
+        // RFC 7208 §7.2: a sender without a local part expands %{l} as "postmaster".
+        return at <= 0 ? "postmaster" : s.substring(0, at);
+    }
+
+    private static String senderDomain(State st, String domain) {
+        if (st.session == null) {
+            return domain;
+        }
+        String s = sender(st, domain);
+        int at = s.lastIndexOf('@');
+        return at < 0 || at == s.length() - 1 ? domain : s.substring(at + 1);
+    }
+
+    private static String helo(State st) {
+        if (st.session != null && st.session.helo() != null && !st.session.helo().isBlank()) {
+            return st.session.helo();
+        }
+        return null;
     }
 
     private static String ipMacro(State st) {

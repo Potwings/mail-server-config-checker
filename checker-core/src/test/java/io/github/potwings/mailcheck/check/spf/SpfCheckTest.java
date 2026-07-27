@@ -206,6 +206,44 @@ class SpfCheckTest {
         assertThat(r.evidence()).anyMatch(e -> e.startsWith("[198.51.100.9] 발신 IP 평가: fail"));
     }
 
+    // ---- 실메일 세션(MailSession) 기반 평가 도메인 결정 ----
+
+    private CheckResult runWithSession(String mailFrom, String helo, String... ips) {
+        return check.run(new CheckContext(DOMAIN, java.util.List.of(ips), "SMTP 세션 접속 IP",
+                true, new CheckContext.MailSession(mailFrom, helo)));
+    }
+
+    @Test
+    void 세션이_있으면_MAIL_FROM_도메인으로_SPF를_평가() {
+        when(dns.query("sender.example", RecordType.TXT))
+                .thenReturn(txt("v=spf1 ip4:203.0.113.5 -all"));
+
+        CheckResult r = runWithSession("user@sender.example", "mail.sender.example", "203.0.113.5");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.PASS);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("sender.example") && e.contains("MAIL FROM 기준"));
+        assertThat(r.evidence()).anyMatch(e -> e.contains("평가: pass"));
+    }
+
+    @Test
+    void bounce면_HELO_도메인으로_폴백해_평가() {
+        when(dns.query("mail.sender.example", RecordType.TXT))
+                .thenReturn(txt("v=spf1 ip4:203.0.113.5 -all"));
+
+        CheckResult r = runWithSession(null, "mail.sender.example", "203.0.113.5");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.PASS);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("HELO 기준"));
+    }
+
+    @Test
+    void bounce에_HELO가_주소_리터럴이면_ERROR() {
+        CheckResult r = runWithSession("", "[203.0.113.5]", "203.0.113.5");
+
+        assertThat(r.status()).isEqualTo(CheckStatus.ERROR);
+        assertThat(r.evidence()).anyMatch(e -> e.contains("SPF 평가 도메인을 정할 수 없음"));
+    }
+
     @Test
     void MX_도출_IP는_SPF_평가에_사용하지_않음() {
         when(dns.query(DOMAIN, RecordType.TXT)).thenReturn(txt("v=spf1 ip4:203.0.113.5 -all"));

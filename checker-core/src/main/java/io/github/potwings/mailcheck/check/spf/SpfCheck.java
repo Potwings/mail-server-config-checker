@@ -12,13 +12,20 @@ import io.github.potwings.mailcheck.dns.RecordType;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * SPF validation per RFC 7208: record-level lint always, plus check_host()
  * evaluation of the user-declared sending IPs when they were entered. MX-derived
  * IPs are inbound addresses, so they are never evaluated against SPF.
+ *
+ * <p>With a real mail session the evaluated domain is the MAIL FROM domain
+ * (HELO for a bounce, RFC 7208 §2.4), not the From: header domain.
  */
 public class SpfCheck implements Check {
+
+    private static final Pattern HOSTNAME =
+            Pattern.compile("^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{1,62}$");
 
     private final DnsQueryService dns;
     private final SpfRecordParser parser = new SpfRecordParser();
@@ -44,7 +51,10 @@ public class SpfCheck implements Check {
     @Override
     public CheckResult run(CheckContext ctx) {
         CheckResult.Builder b = CheckResult.builder(id(), title());
-        String domain = ctx.domain();
+        String domain = resolveSpfDomain(ctx, b);
+        if (domain == null) {
+            return b.build();
+        }
 
         DnsAnswer ans = dns.query(domain, RecordType.TXT);
         if (ans.failed()) {
@@ -97,16 +107,52 @@ public class SpfCheck implements Check {
         evaluateTerminalPolicy(parsed.terms(), b);
 
         if (count.fatal() == null) {
-            evaluateSenderIps(ctx, parsed.terms(), b);
+            evaluateSenderIps(ctx, domain, parsed.terms(), b);
         }
         return b.build();
     }
 
+    /**
+     * The domain whose SPF policy is checked. Without a mail session this is the
+     * user-entered domain; with one it is the MAIL FROM domain, or the HELO domain
+     * for a bounce (RFC 7208 §2.4). Returns null after setting ERROR when even the
+     * HELO fallback is unusable (address literal etc.).
+     */
+    private String resolveSpfDomain(CheckContext ctx, CheckResult.Builder b) {
+        if (!ctx.hasMailSession()) {
+            return ctx.domain();
+        }
+        CheckContext.MailSession session = ctx.mailSession();
+        String mailFromDomain = session.mailFromDomain();
+        if (mailFromDomain != null) {
+            b.evidence("SPF 평가 도메인: " + mailFromDomain + " (MAIL FROM 기준)");
+            return mailFromDomain;
+        }
+        String helo = session.helo() == null ? "" : session.helo().trim().toLowerCase(Locale.ROOT);
+        if (!HOSTNAME.matcher(helo).matches()) {
+            b.status(CheckStatus.ERROR)
+                    .evidence("MAIL FROM이 비어 있고(bounce) HELO(" + (helo.isEmpty() ? "없음" : helo)
+                            + ")도 유효한 호스트명이 아니어서 SPF 평가 도메인을 정할 수 없음")
+                    .guidance("발신 서버가 HELO에 FQDN을 사용하도록 설정한 뒤 다시 테스트하세요");
+            return null;
+        }
+        b.evidence("SPF 평가 도메인: " + helo + " (MAIL FROM이 비어 있어 HELO 기준 — RFC 7208 §2.4)");
+        return helo;
+    }
+
     /** check_host() per user-supplied sending IP; worst-of aggregation, guidance once. */
-    private void evaluateSenderIps(CheckContext ctx, List<SpfTerm> terms, CheckResult.Builder b) {
+    private void evaluateSenderIps(CheckContext ctx, String spfDomain, List<SpfTerm> terms,
+                                   CheckResult.Builder b) {
         if (!ctx.hasTargetIps() || !ctx.ipsUserProvided()) {
             b.evidence("※ 발신 서버 IP를 입력하면 해당 IP가 SPF에 허용되는지(check_host)까지 평가합니다");
             return;
+        }
+
+        SpfEvaluator.SmtpSession smtpSession = null;
+        if (ctx.hasMailSession()) {
+            CheckContext.MailSession ms = ctx.mailSession();
+            String sender = ms.bounce() ? "postmaster@" + spfDomain : ms.mailFrom();
+            smtpSession = new SpfEvaluator.SmtpSession(sender, ms.helo());
         }
 
         List<String> ips = ctx.targetIps();
@@ -117,7 +163,7 @@ public class SpfCheck implements Check {
             // drops the IP so it is not printed twice on the same line.
             String tag = ips.size() > 1 ? "[" + ip + "] " : "";
             String label = tag.isEmpty() ? "발신 IP " + ip + " 평가: " : "발신 IP 평가: ";
-            SpfEvaluator.Evaluation ev = evaluator.evaluate(ip, ctx.domain(), terms);
+            SpfEvaluator.Evaluation ev = evaluator.evaluate(ip, spfDomain, terms, smtpSession);
             ev.notes().forEach(n -> b.evidence(tag + n));
             String matched = ev.matched() == null ? "" : " (매칭: " + ev.matched() + ")";
             switch (ev.verdict()) {

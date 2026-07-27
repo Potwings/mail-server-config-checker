@@ -6,6 +6,10 @@ build/
 application-local.yml
 application-local.properties
 
+# 실메일 파이프라인 로컬 데이터 (세션 JSON, processed.log)
+/data/
+checker-web/data/
+
 # Claude Code 로컬 작업 디렉터리 (worktree 등)
 .claude/
 

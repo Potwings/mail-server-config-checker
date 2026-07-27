@@ -12,6 +12,7 @@ bootRun {
 
 dependencies {
     implementation project(':checker-core')
+    implementation project(':checker-mail')
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

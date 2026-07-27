@@ -14,14 +14,22 @@
   .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
   h1 { font-size: 1.6rem; margin: 0 0 4px; }
   .sub { color: var(--muted); margin: 0 0 24px; font-size: .95rem; }
-  form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-  input { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; background: var(--card); }
-  #domain { flex: 2 1 240px; }
-  #ip { flex: 1 1 160px; }
   button { padding: 12px 22px; border: 0; border-radius: 10px; background: #2563eb; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
   button:disabled { opacity: .5; cursor: default; }
-  .hint { color: var(--muted); font-size: .82rem; margin: 0 0 24px; }
-  .meta { color: var(--muted); font-size: .88rem; margin: 18px 2px 10px; }
+  .hint { color: var(--muted); font-size: .82rem; margin: 10px 0 0; }
+  .addr-box { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; }
+  .addr { font-family: Consolas, 'Courier New', monospace; font-size: 1.05rem; font-weight: 600; word-break: break-all; }
+  .copy-btn { padding: 8px 14px; font-size: .85rem; }
+  .banner { border-radius: 10px; padding: 12px 16px; margin: 14px 0; font-size: .92rem; }
+  .banner.wait { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; display: flex; align-items: center; gap: 10px; }
+  .banner.expired { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .err-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 10px; padding: 12px 16px; margin: 14px 0; }
+  .mail-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; margin: 18px 0; padding: 16px 20px; }
+  .mail-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+  .mail-title { font-size: 1.1rem; font-weight: 700; }
+  .mail-meta { color: var(--muted); font-size: .85rem; }
+  .note-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 10px; padding: 10px 14px; margin-top: 10px; font-size: .92rem; }
+  .meta { color: var(--muted); font-size: .88rem; margin: 10px 2px 10px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
   .card summary { list-style: none; cursor: pointer; padding: 16px 20px; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 10px; user-select: none; }
   .card summary::-webkit-details-marker { display: none; }
@@ -39,64 +47,163 @@
   .guide li { margin: 4px 0; }
   .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
   .chip { font-size: .82rem; padding: 5px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); }
-  .err-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 10px; padding: 12px 16px; }
-  .spin { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: r .7s linear infinite; vertical-align: -3px; }
+  .spin { display: inline-block; width: 16px; height: 16px; border: 2px solid #2563eb; border-top-color: transparent; border-radius: 50%; animation: r .7s linear infinite; flex-shrink: 0; }
+  .spin.on-btn { border-color: #fff; border-top-color: transparent; vertical-align: -3px; }
   @keyframes r { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Mail Health Check</h1>
-  <p class="sub">도메인 하나로 SPF · DMARC · MX · PTR/FCrDNS · RBL · DNS 전파를 한 번에 진단합니다.</p>
+  <p class="sub">발급된 주소로 테스트 메일 1통을 보내면 SPF · DMARC · MX · PTR/FCrDNS · RBL · DNS 전파를 실제 발송 기준으로 진단합니다.</p>
 
-  <form id="form">
-    <input id="domain" placeholder="도메인 (예: example.com)" required autocomplete="off">
-    <input id="ip" placeholder="발신 IP (선택, 쉼표로 여러 개)" autocomplete="off">
-    <button id="go" type="submit">진단</button>
-  </form>
-  <p class="hint">발신 IP를 입력하면 SPF 허용 여부(check_host)·PTR·RBL을 그 IP 기준으로 검사합니다(쉼표 구분, 최대 20개). 비우면 MX 호스트의 A 레코드에서 도출한 수신 서버 IP로 PTR/RBL만 검사하고, SPF는 레코드 자체 점검만 수행합니다.</p>
+  <div id="issue-area">
+    <button id="issue">테스트 주소 발급</button>
+    <p class="hint">주소를 발급받고 그 주소로 점검할 메일 서버에서 메일을 보내면, 접속 IP·HELO·MAIL FROM 등 실제 세션 정보를 기준으로 자동 진단됩니다.</p>
+  </div>
 
-  <div id="out"></div>
+  <div id="session-area" hidden>
+    <div class="addr-box">
+      <span>테스트 주소:</span>
+      <span class="addr" id="addr"></span>
+      <button class="copy-btn" id="copy" type="button">복사</button>
+    </div>
+    <p class="hint">이 주소로 테스트 메일을 1통 보내세요. 여러 발신 서버를 점검하려면 같은 주소로 서버별로 각각 발송하면 됩니다. 결과 페이지 주소(URL)를 저장해 두면 나중에 다시 열람할 수 있습니다.</p>
+    <div id="status"></div>
+    <div id="mails"></div>
+  </div>
 </div>
 
 <script>
 const COLORS = { PASS: 'var(--pass)', WARN: 'var(--warn)', FAIL: 'var(--fail)', SKIP: 'var(--skip)', ERROR: 'var(--error)' };
-const form = document.getElementById('form');
-const out = document.getElementById('out');
-const go = document.getElementById('go');
+const POLL_MS = 4000;
+
+const issueArea = document.getElementById('issue-area');
+const issueBtn = document.getElementById('issue');
+const sessionArea = document.getElementById('session-area');
+const addrEl = document.getElementById('addr');
+const copyBtn = document.getElementById('copy');
+const statusEl = document.getElementById('status');
+const mailsEl = document.getElementById('mails');
+
+const renderedMails = new Set(); // queueId(또는 incomingDir) 키 — append-only 렌더링용
+let pollTimer = null;
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const domain = document.getElementById('domain').value.trim();
-  const ip = document.getElementById('ip').value.trim();
-  if (!domain) return;
+// ---- 세션 발급 / 재개 ----
 
-  go.disabled = true;
-  go.innerHTML = '<span class="spin"></span>';
-  out.innerHTML = '';
+issueBtn.addEventListener('click', async () => {
+  issueBtn.disabled = true;
+  issueBtn.innerHTML = '<span class="spin on-btn"></span>';
   try {
-    const params = new URLSearchParams({ domain });
-    if (ip) params.set('ip', ip);
-    const res = await fetch('/api/v1/diagnose?' + params);
-    const body = await res.json();
-    if (!res.ok) {
-      out.innerHTML = '<div class="err-box">' + esc(body.error || ('요청 실패 (' + res.status + ')')) + '</div>';
-      return;
-    }
-    render(body);
+    const res = await fetch('/api/v1/sessions', { method: 'POST' });
+    if (!res.ok) throw new Error('발급 실패 (' + res.status + ')');
+    const session = await res.json();
+    history.replaceState(null, '', '/?s=' + encodeURIComponent(session.id));
+    enterSession(session);
   } catch (err) {
-    out.innerHTML = '<div class="err-box">서버에 연결할 수 없습니다: ' + esc(err.message) + '</div>';
-  } finally {
-    go.disabled = false;
-    go.textContent = '진단';
+    statusEl.innerHTML = '';
+    issueArea.insertAdjacentHTML('beforeend',
+      '<div class="err-box">주소를 발급하지 못했습니다: ' + esc(err.message) + '</div>');
+    issueBtn.disabled = false;
+    issueBtn.textContent = '테스트 주소 발급';
   }
 });
 
-function render(report) {
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(addrEl.textContent);
+    copyBtn.textContent = '복사됨';
+    setTimeout(() => copyBtn.textContent = '복사', 1500);
+  } catch (e) {
+    copyBtn.textContent = '복사 실패';
+  }
+});
+
+function enterSession(session) {
+  issueArea.hidden = true;
+  sessionArea.hidden = false;
+  applySession(session);
+  pollTimer = setInterval(poll, POLL_MS);
+}
+
+async function poll() {
+  const sid = new URLSearchParams(location.search).get('s');
+  if (!sid) return stopPolling();
+  try {
+    const res = await fetch('/api/v1/sessions/' + encodeURIComponent(sid));
+    if (res.status === 404) {
+      stopPolling();
+      statusEl.innerHTML = '<div class="err-box">세션을 찾을 수 없습니다. 주소가 잘못됐거나 세션 데이터가 삭제되었습니다.</div>';
+      return;
+    }
+    if (!res.ok) return; // 일시 오류 — 다음 폴에 재시도
+    applySession(await res.json());
+  } catch (e) {
+    // 네트워크 일시 오류 — 다음 폴에 재시도
+  }
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function applySession(session) {
+  addrEl.textContent = session.address;
+
+  (session.mails || []).forEach((mail, i) => {
+    const key = mail.queueId || mail.incomingDir || String(i);
+    if (renderedMails.has(key)) return; // 이미 그린 카드는 재생성하지 않음 (열림/닫힘 보존)
+    renderedMails.add(key);
+    mailsEl.insertAdjacentHTML('beforeend', mailCard(mail, renderedMails.size));
+  });
+
+  if (session.expired) {
+    stopPolling();
+    statusEl.innerHTML = '<div class="banner expired">이 세션은 만료되었습니다. 새로 도착하는 메일은 더 이상 진단되지 않습니다'
+      + (renderedMails.size ? ' — 아래 기존 결과는 계속 열람할 수 있습니다.' : '. 새 주소를 발급받아 다시 테스트하세요.')
+      + '</div>';
+  } else if (renderedMails.size === 0) {
+    statusEl.innerHTML = '<div class="banner wait"><span class="spin"></span>메일 대기 중 — 위 주소로 테스트 메일을 보내면 잠시 후 결과가 자동으로 표시됩니다.</div>';
+  } else {
+    statusEl.innerHTML = '<div class="banner wait"><span class="spin"></span>추가 메일 대기 중 — 같은 주소로 다른 서버에서 보내면 카드가 추가됩니다.</div>';
+  }
+}
+
+// ---- 메일 카드 렌더링 ----
+
+function mailCard(mail, seq) {
+  const received = mail.receivedAt ? new Date(mail.receivedAt).toLocaleString() : '';
+  const meta = [
+    received && ('수신 ' + received),
+    mail.clientIp && ('발신 IP ' + mail.clientIp),
+    mail.mailFrom ? ('MAIL FROM ' + mail.mailFrom) : 'MAIL FROM 없음(bounce)',
+    mail.helo && ('HELO ' + mail.helo)
+  ].filter(Boolean).map(esc).join(' · ');
+
+  let title, body;
+  if (mail.status === 'DIAGNOSED') {
+    title = esc(mail.fromDomain || mail.report.domain);
+    body = renderReport(mail.report);
+  } else if (mail.status === 'REJECTED_PRIVATE_IP') {
+    title = '진단 불가 (내부망 발신)';
+    body = '<div class="note-box">' + esc(mail.note || '') + '</div>';
+  } else {
+    title = '진단 실패';
+    body = '<div class="note-box">' + esc(mail.note || '진단을 완료하지 못했습니다.') + '</div>';
+  }
+
+  return '<div class="mail-card">'
+    + '<div class="mail-head"><span class="mail-title">메일 #' + seq + ' — ' + title + '</span></div>'
+    + '<div class="mail-meta">' + meta + '</div>'
+    + body
+    + '</div>';
+}
+
+function renderReport(report) {
   const counts = {};
   report.results.forEach(r => counts[r.status] = (counts[r.status] || 0) + 1);
   const chips = Object.entries(counts)
@@ -107,7 +214,7 @@ function render(report) {
     ? 'PTR/RBL 대상 IP: ' + esc(report.targetIps.join(', ')) + ' — ' + esc(report.targetIpSource)
     : 'PTR/RBL 대상 IP 확인 불가';
 
-  let html = '<div class="summary">' + chips + '</div>'
+  let html = '<div class="summary" style="margin-top:10px">' + chips + '</div>'
     + '<p class="meta">' + esc(report.domain) + ' · ' + ipInfo + ' · 총 ' + report.totalElapsedMs + 'ms</p>';
 
   for (const r of report.results) {
@@ -133,8 +240,33 @@ function render(report) {
     }
     html += '</div></details>';
   }
-  out.innerHTML = html;
+  return html;
 }
+
+// ---- 초기 진입: ?s= 가 있으면 발급 생략하고 세션 재개 ----
+
+(async function init() {
+  const sid = new URLSearchParams(location.search).get('s');
+  if (!sid) return;
+  issueArea.hidden = true;
+  sessionArea.hidden = false;
+  statusEl.innerHTML = '<div class="banner wait"><span class="spin"></span>세션 불러오는 중…</div>';
+  try {
+    const res = await fetch('/api/v1/sessions/' + encodeURIComponent(sid));
+    if (res.status === 404) {
+      statusEl.innerHTML = '<div class="err-box">세션을 찾을 수 없습니다. 새 주소를 발급받으세요.</div>';
+      issueArea.hidden = false;
+      return;
+    }
+    if (!res.ok) throw new Error('요청 실패 (' + res.status + ')');
+    const session = await res.json();
+    applySession(session);
+    if (!session.expired) pollTimer = setInterval(poll, POLL_MS);
+  } catch (err) {
+    statusEl.innerHTML = '<div class="err-box">세션을 불러오지 못했습니다: ' + esc(err.message) + '</div>';
+    issueArea.hidden = false;
+  }
+})();
 </script>
 </body>
 </html>

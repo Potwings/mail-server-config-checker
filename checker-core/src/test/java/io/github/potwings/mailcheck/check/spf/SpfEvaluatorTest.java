@@ -172,6 +172,58 @@ class SpfEvaluatorTest {
         assertThat(ev.notes()).anyMatch(n -> n.contains("%{h}"));
     }
 
+    // ---- 실세션(SmtpSession) 매크로 확장 ----
+
+    private Evaluation evalWithSession(String ip, String record, SpfEvaluator.SmtpSession session) {
+        return evaluator.evaluate(ip, DOMAIN, parser.parse(record).terms(), session);
+    }
+
+    @Test
+    void 세션이_있으면_h_매크로가_실제_HELO로_확장되어_exists_매칭() {
+        when(dns.query("mail.sender.example.helo.example.net", RecordType.A))
+                .thenReturn(answer("127.0.0.2"));
+
+        Evaluation ev = evalWithSession("203.0.113.5",
+                "v=spf1 exists:%{h}.helo.example.net -all",
+                new SpfEvaluator.SmtpSession("user@sender.example", "mail.sender.example"));
+
+        assertThat(ev.verdict()).isEqualTo(Verdict.PASS);
+        assertThat(ev.notes()).noneMatch(n -> n.contains("%{h}"));
+    }
+
+    @Test
+    void 세션이_있으면_s_l_o_매크로가_실제_발신자_값으로_확장() {
+        // %{l} = user, %{o} = sender.example, %{s} = user@sender.example(@는 구분자 아님 → 한 라벨)
+        when(dns.query("user.sender.example.check.example.net", RecordType.A))
+                .thenReturn(answer("127.0.0.2"));
+
+        Evaluation ev = evalWithSession("203.0.113.5",
+                "v=spf1 exists:%{l}.%{o}.check.example.net -all",
+                new SpfEvaluator.SmtpSession("user@sender.example", "mail.sender.example"));
+
+        assertThat(ev.verdict()).isEqualTo(Verdict.PASS);
+    }
+
+    @Test
+    void 세션이_있어도_HELO가_없으면_h_매크로는_기존대로_스킵() {
+        Evaluation ev = evalWithSession("203.0.113.5",
+                "v=spf1 exists:%{h}.helo.example.net ip4:203.0.113.5 -all",
+                new SpfEvaluator.SmtpSession("user@sender.example", null));
+
+        assertThat(ev.verdict()).isEqualTo(Verdict.PASS);
+        assertThat(ev.notes()).anyMatch(n -> n.contains("%{h}"));
+    }
+
+    @Test
+    void 세션이_없으면_s_매크로는_합성_postmaster_발신자로_확장() {
+        when(dns.query("postmaster." + DOMAIN + ".check.example.net", RecordType.A))
+                .thenReturn(answer("127.0.0.2"));
+
+        Evaluation ev = eval("203.0.113.5", "v=spf1 exists:%{l}.%{o}.check.example.net -all");
+
+        assertThat(ev.verdict()).isEqualTo(Verdict.PASS);
+    }
+
     @Test
     void ptr_메커니즘은_FCrDNS_확인_후_도메인_접미사_매칭() {
         when(dns.query("203.0.113.5", RecordType.PTR)).thenReturn(answer("mail.example.com"));

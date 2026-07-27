@@ -6,3 +6,7 @@ mailcheck:
   rbl:
     # https://www.spamhaus.com/free-trial/ 에서 무료 발급
     spamhaus-dqs-key: "your-dqs-key-here"
+  # Windows 개발 환경: 수집 디렉터리를 로컬 경로로 바꿔 수동 E2E 가능
+  intake:
+    incoming-dir: "C:/mailcheck-dev/incoming"
+    data-dir: "C:/mailcheck-dev/data"

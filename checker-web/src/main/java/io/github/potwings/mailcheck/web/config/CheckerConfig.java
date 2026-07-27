@@ -21,7 +21,6 @@ import io.github.potwings.mailcheck.check.spf.SpfCheck;
 import io.github.potwings.mailcheck.dns.DnsJavaQueryService;
 import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.engine.CheckEngine;
-import io.github.potwings.mailcheck.engine.TargetIpResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -40,11 +39,6 @@ public class CheckerConfig {
     @Bean
     public OrgDomainResolver orgDomainResolver() {
         return new OrgDomainResolver();
-    }
-
-    @Bean
-    public TargetIpResolver targetIpResolver(DnsQueryService dns) {
-        return new TargetIpResolver(dns);
     }
 
     @Bean

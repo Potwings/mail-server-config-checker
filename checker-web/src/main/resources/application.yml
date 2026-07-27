@@ -1,6 +1,14 @@
 mailcheck:
   dns-timeout: 3s
   check-timeout: 12s
+  intake:
+    enabled: true
+    incoming-dir: /var/lib/maildiag/incoming
+    data-dir: ./data
+    mail-domain: mail-check.yonggeon.kr
+    poll-interval: 5s
+    # 수신 매칭 기준 TTL — 만료 후 도착 메일은 스킵, 기존 결과는 계속 조회 가능
+    session-ttl: 24h
   rbl:
     spamhaus-dqs-key: ${SPAMHAUS_DQS_KEY:}
     barracuda-enabled: true
