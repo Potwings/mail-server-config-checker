@@ -9,7 +9,9 @@ import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -86,6 +88,9 @@ public class RblCheck implements Check {
 
         int listedCount = 0;
         int checkedCount = 0;
+        // Zone-specific delisting steps, deduplicated across IPs and providers
+        // (design rule: one guidance line per failure type).
+        Set<String> delistingGuidance = new LinkedHashSet<>();
         for (CompletableFuture<Outcome> f : futures) {
             Outcome o = f.join();
             String tag = multi ? "[" + o.ip() + "] " : "";
@@ -94,6 +99,7 @@ public class RblCheck implements Check {
                     listedCount++;
                     checkedCount++;
                     b.evidence(tag + o.provider().name() + ": 등재됨 — " + String.join(", ", o.verdict().listings()));
+                    delistingGuidance.addAll(o.verdict().guidance());
                 }
                 case NOT_LISTED -> {
                     checkedCount++;
@@ -107,7 +113,8 @@ public class RblCheck implements Check {
 
         if (listedCount > 0) {
             b.status(CheckStatus.FAIL)
-                    .guidance("등재 사유를 해소한 뒤 각 RBL의 해제(delisting) 절차를 진행하세요. PBL 등재는 발신 IP가 동적 대역이라는 뜻으로, 고정 IP/정식 발신 경로 사용이 근본 해결책입니다");
+                    .guidance("등재 사유를 해소한 뒤 각 RBL의 해제(delisting) 절차를 진행하세요. 원인을 없애지 않고 해제만 요청하면 곧 재등재됩니다");
+            delistingGuidance.forEach(b::guidance);
         } else if (checkedCount == 0) {
             b.atLeast(CheckStatus.SKIP).evidence("실제 조회에 성공한 RBL이 없음");
         }

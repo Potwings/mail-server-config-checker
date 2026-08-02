@@ -60,6 +60,9 @@ public class MailspikeProvider implements RblProvider {
             String meaning = LISTINGS.get(code);
             listings.add(meaning != null ? meaning + " [" + code + "]" : "알 수 없는 리턴 코드 " + code);
         }
-        return listings.isEmpty() ? RblVerdict.notListed() : RblVerdict.listed(listings);
+        return listings.isEmpty() ? RblVerdict.notListed()
+                : RblVerdict.listed(listings, List.of(
+                        "Mailspike: https://mailspike.org 에서 IP를 조회해 해제를 요청하세요. "
+                                + "평판 등급(L3~L5) 등재는 발송 품질이 개선되면 시간이 지나며 자동 회복됩니다"));
     }
 }

@@ -50,6 +50,9 @@ public class BarracudaProvider implements RblProvider {
                 .filter(v -> v.startsWith("127.0.0."))
                 .map(v -> "Barracuda 등재 [" + v + "]")
                 .toList();
-        return hits.isEmpty() ? RblVerdict.notListed() : RblVerdict.listed(hits);
+        return hits.isEmpty() ? RblVerdict.notListed()
+                : RblVerdict.listed(hits, List.of(
+                        "Barracuda: 스팸 발송·감염 등 등재 원인을 먼저 해결한 뒤 "
+                                + "https://www.barracudacentral.org/rbl/removal-request 에서 해제를 요청하세요 (보통 12시간 내 처리)"));
     }
 }

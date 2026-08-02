@@ -62,6 +62,8 @@ public class HostkarmaProvider implements RblProvider {
                 }
             }
         }
-        return listings.isEmpty() ? RblVerdict.notListed() : RblVerdict.listed(listings);
+        return listings.isEmpty() ? RblVerdict.notListed()
+                : RblVerdict.listed(listings, List.of(
+                        "Hostkarma: 스팸 발송 원인을 해결한 뒤 https://ipadmin.junkemailfilter.com 에서 IP를 조회해 해제를 요청하세요"));
     }
 }

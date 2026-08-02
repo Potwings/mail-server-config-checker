@@ -48,6 +48,9 @@ public class PsblProvider implements RblProvider {
                 .filter(v -> v.startsWith("127.0.0."))
                 .map(v -> "PSBL 등재 (스팸트랩 수신 이력) [" + v + "]")
                 .toList();
-        return hits.isEmpty() ? RblVerdict.notListed() : RblVerdict.listed(hits);
+        return hits.isEmpty() ? RblVerdict.notListed()
+                : RblVerdict.listed(hits, List.of(
+                        "PSBL: 스팸트랩 주소로의 발송이 원인입니다. https://psbl.org 에서 IP를 조회해 직접 해제(self-removal)할 수 있으나, "
+                                + "원인을 먼저 해결하지 않으면 재등재됩니다"));
     }
 }

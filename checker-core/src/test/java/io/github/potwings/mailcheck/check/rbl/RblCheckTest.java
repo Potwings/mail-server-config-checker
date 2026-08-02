@@ -78,6 +78,29 @@ class RblCheckTest {
     }
 
     @Test
+    void 등재되면_존별_해제_안내를_guidance로_노출한다() {
+        when(dns.query(REVERSED + ".bl.spamcop.net", RecordType.A)).thenReturn(listedAnswer("127.0.0.2"));
+        when(dns.query(REVERSED + ".b.barracudacentral.org", RecordType.A)).thenReturn(listedAnswer("127.0.0.2"));
+        RblCheck check = new RblCheck(dns, List.of(new SpamCopProvider(true), new BarracudaProvider(true)));
+
+        CheckResult r = run(check, IP);
+
+        assertThat(r.guidance()).anyMatch(g -> g.contains("spamcop.net"));
+        assertThat(r.guidance()).anyMatch(g -> g.contains("barracudacentral.org"));
+    }
+
+    @Test
+    void 다중_IP가_같은_존에_등재돼도_해제_안내는_한_번만() {
+        when(dns.query(REVERSED + ".bl.spamcop.net", RecordType.A)).thenReturn(listedAnswer("127.0.0.2"));
+        when(dns.query(REVERSED2 + ".bl.spamcop.net", RecordType.A)).thenReturn(listedAnswer("127.0.0.2"));
+        RblCheck check = new RblCheck(dns, List.of(new SpamCopProvider(true)));
+
+        CheckResult r = run(check, IP, IP2);
+
+        assertThat(r.guidance().stream().filter(g -> g.contains("spamcop.net"))).hasSize(1);
+    }
+
+    @Test
     void 조회_오류는_WARN이며_미등재로_처리되지_않는다() {
         when(dns.query(REVERSED + ".b.barracudacentral.org", RecordType.A)).thenReturn(DnsAnswer.of(DnsRcode.TIMEOUT));
         RblCheck check = new RblCheck(dns, List.of(new BarracudaProvider(true)));

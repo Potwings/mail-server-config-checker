@@ -7,7 +7,9 @@ import io.github.potwings.mailcheck.api.CheckStatus;
 import io.github.potwings.mailcheck.dns.DnsQueryService;
 import io.github.potwings.mailcheck.dns.RecordType;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Domain-based RBL check — is the domain itself blacklisted (not its IPs)?
@@ -43,16 +45,16 @@ public class DomainRblCheck implements Check {
         List<DomainRblProvider> active = providers.stream().filter(DomainRblProvider::enabled).toList();
 
         boolean listed = false;
-        boolean abusedLegit = false;
         int checkedCount = 0;
+        Set<String> delistingGuidance = new LinkedHashSet<>();
         for (DomainRblProvider p : active) {
             RblVerdict v = p.interpret(dns.query(p.queryName(ctx.domain()), RecordType.A));
             switch (v.type()) {
                 case LISTED -> {
                     listed = true;
                     checkedCount++;
-                    abusedLegit |= v.listings().stream().anyMatch(l -> l.contains("악용된 정상 도메인"));
                     b.evidence(p.name() + ": 등재됨 — " + String.join(", ", v.listings()));
+                    delistingGuidance.addAll(v.guidance());
                 }
                 case NOT_LISTED -> {
                     checkedCount++;
@@ -65,10 +67,11 @@ public class DomainRblCheck implements Check {
         }
 
         if (listed) {
-            b.status(CheckStatus.FAIL)
-                    .guidance("https://check.spamhaus.org 에서 도메인 등재 사유를 확인하고 해제(delisting)를 요청하세요");
-            if (abusedLegit) {
-                b.guidance("'악용된 정상 도메인' 등재는 사이트 해킹/오픈 리다이렉터 악용이 원인일 수 있으니 웹 서버 취약점 점검 후 해제를 요청하세요");
+            b.status(CheckStatus.FAIL);
+            if (delistingGuidance.isEmpty()) {
+                b.guidance("도메인 등재 사유를 확인하고 각 RBL의 해제(delisting) 절차를 진행하세요");
+            } else {
+                delistingGuidance.forEach(b::guidance);
             }
         } else if (checkedCount == 0) {
             b.atLeast(CheckStatus.SKIP).evidence("실제 조회에 성공한 도메인 RBL이 없음");

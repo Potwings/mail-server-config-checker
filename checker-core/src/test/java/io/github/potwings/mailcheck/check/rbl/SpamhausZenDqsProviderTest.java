@@ -47,6 +47,23 @@ class SpamhausZenDqsProviderTest {
     }
 
     @Test
+    void 등재_코드별_해제_안내를_함께_반환한다() {
+        RblVerdict v = provider.interpret(answer("127.0.0.2", "127.0.0.10"));
+
+        assertThat(v.guidance()).anyMatch(g -> g.startsWith("SBL:") && g.contains("check.spamhaus.org"));
+        assertThat(v.guidance()).anyMatch(g -> g.startsWith("PBL:") && g.contains("자가 해제"));
+    }
+
+    @Test
+    void XBL_코드들은_해제_안내를_공유하여_중복되지_않는다() {
+        RblVerdict v = provider.interpret(answer("127.0.0.4", "127.0.0.5", "127.0.0.7"));
+
+        assertThat(v.listings()).hasSize(3);
+        assertThat(v.guidance()).hasSize(1);
+        assertThat(v.guidance().get(0)).startsWith("XBL:");
+    }
+
+    @Test
     void 오류_코드_127_255_255_x는_미등재가_아니라_ERROR() {
         RblVerdict v = provider.interpret(answer("127.255.255.254"));
 

@@ -40,6 +40,7 @@ class NewRblProvidersTest {
 
             assertThat(v.type()).isEqualTo(RblVerdict.Type.LISTED);
             assertThat(v.listings()).anyMatch(l -> l.contains("스팸트랩"));
+            assertThat(v.guidance()).anyMatch(g -> g.contains("psbl.org"));
         }
 
         @Test
@@ -66,6 +67,7 @@ class NewRblProvidersTest {
             assertThat(v.type()).isEqualTo(RblVerdict.Type.LISTED);
             assertThat(v.listings()).anyMatch(l -> l.contains("Z 리스트"));
             assertThat(v.listings()).anyMatch(l -> l.contains("L5"));
+            assertThat(v.guidance()).anyMatch(g -> g.contains("mailspike.org"));
         }
 
         @Test
@@ -104,6 +106,7 @@ class NewRblProvidersTest {
             assertThat(black.listings()).anyMatch(l -> l.contains("블랙리스트"));
             assertThat(brown.type()).isEqualTo(RblVerdict.Type.LISTED);
             assertThat(brown.listings()).anyMatch(l -> l.contains("브라운리스트"));
+            assertThat(black.guidance()).anyMatch(g -> g.contains("junkemailfilter.com"));
         }
 
         @Test

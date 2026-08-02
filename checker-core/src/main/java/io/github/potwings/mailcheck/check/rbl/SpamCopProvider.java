@@ -45,6 +45,9 @@ public class SpamCopProvider implements RblProvider {
                 .filter(v -> v.startsWith("127.0.0."))
                 .map(v -> "SpamCop 등재 [" + v + "]")
                 .toList();
-        return hits.isEmpty() ? RblVerdict.notListed() : RblVerdict.listed(hits);
+        return hits.isEmpty() ? RblVerdict.notListed()
+                : RblVerdict.listed(hits, List.of(
+                        "SpamCop: 스팸 신고/스팸트랩 수신이 멈추면 최대 24시간 후 자동 해제됩니다. "
+                                + "https://www.spamcop.net/bl.shtml 에서 IP를 조회하면 등재 사유와 남은 시간을 확인할 수 있습니다"));
     }
 }
