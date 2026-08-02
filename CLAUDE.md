@@ -1,7 +1,7 @@
 # mail-server-config-checker
 
 테스트 메일 1통 발송으로 SPF / DKIM / DMARC(+alignment) / PTR(FCrDNS·HELO) / RBL / MX / DNS 전파 / MTA-STS·TLS-RPT / 헤더 품질을 한 번에 진단하는 메일 서버 설정 점검 도구.
-기준 문서: PRD v1.6 (저장소 루트 `mail-health-check-prd.md`) — **실메일 단일 진입점**(2026-07-26 결정, **M7에서 구현 완료** 2026-07-27): 유니크 주소 발급(`check-{uuid}@mail-check.yonggeon.kr`) → 사용자가 테스트 메일 발송 → 수집 디렉터리 폴링 → 세션 정보(접속 IP·HELO·MAIL FROM)와 원문 From 도메인 추출 → 검사 엔진 자동 실행 → 결과 페이지(발송 건별 카드 누적, 폴링 갱신). 기존 도메인/IP 입력 폼과 `GET /api/v1/diagnose` API는 **제거됨**. 수신 인프라 계약은 `infra-work.md` §3, M7 구현 계획은 `m7-plan.md`. 서비스 대상은 구축 완료되어 발송 가능한 메일 서버(구축 전 사전 검증·타사 도메인 조회는 목적 외). **M8 구현 완료**(2026-07-28): DKIM 서명 검증(jDKIM)·HELO/PTR 일치·DMARC alignment 실검증·헤더 품질 + 구 PR #1 이관 4건(DMARC 외부 리포트 승인·제네릭 PTR 경고·MTA-STS/TLS-RPT·RBL IPv6) — 이관 판정 기록은 `m8-backlog.md`. eml 기반 검사를 위해 `message.eml`과 수집 디렉터리는 계속 보존(`MailResult.incomingDir`), 원문 접근은 `CheckContext.emlPath`.
+기준 문서: PRD v1.6 (저장소 루트 `mail-health-check-prd.md`) — **실메일 단일 진입점**(2026-07-26 결정, **M7에서 구현 완료** 2026-07-27): 유니크 주소 발급(`check-{uuid}@mail-check.yonggeon.kr`) → 사용자가 테스트 메일 발송 → 수집 디렉터리 폴링 → 세션 정보(접속 IP·HELO·MAIL FROM)와 원문 From 도메인 추출 → 검사 엔진 자동 실행 → 결과 페이지(발송 건별 카드 누적, 폴링 갱신). 기존 도메인/IP 입력 폼과 `GET /api/v1/diagnose` API는 **제거됨**. 수신 인프라 계약은 `infra-work.md` §3, M7 구현 계획은 `m7-plan.md`. 서비스 대상은 구축 완료되어 발송 가능한 메일 서버(구축 전 사전 검증·타사 도메인 조회는 목적 외). **M8 구현 완료**(2026-07-28): DKIM 서명 검증(jDKIM)·HELO/PTR 일치·DMARC alignment 실검증·헤더 품질 + 구 PR #1 이관 4건(DMARC 외부 리포트 승인·제네릭 PTR 경고·MTA-STS/TLS-RPT·RBL IPv6) — 이관 판정 기록은 `m8-backlog.md`. eml 기반 검사를 위해 `message.eml`과 수집 디렉터리는 계속 보존(`MailResult.incomingDir`), 원문 접근은 `CheckContext.emlPath`. **남은 작업은 전부 서버(홈서버) 측** — M6 잔여(unbound·RCPT 토큰 검증 등)와 M9 배포 스모크. 서버 세션용 작업 목록은 `server-work-todo.md`(서비스 개요 포함, 서버에서 clone하여 사용).
 
 ## 빌드 / 실행 / 테스트
 
