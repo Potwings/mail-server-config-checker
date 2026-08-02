@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>코드리뷰 — RBL 해제 안내 커밋 (af0716f)</title>
+<style>
+  :root {
+    --border: #ddd;
+    --text: #24292f;
+    --muted: #656d76;
+    --bg: #f6f8fa;
+    --confirmed: #cf222e;
+    --confirmed-bg: #ffebe9;
+    --plausible: #9a6700;
+    --plausible-bg: #fff8c5;
+    --refuted: #656d76;
+    --refuted-bg: #f6f8fa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", -apple-system, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    padding: 40px 16px;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  header { margin-bottom: 28px; }
+  h1 { font-size: 1.5rem; margin-bottom: 8px; }
+  .meta { color: var(--muted); font-size: 0.9rem; }
+  .meta code {
+    background: #fff; border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 6px; font-size: 0.85em;
+  }
+  .summary-bar {
+    display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;
+  }
+  .stat {
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 16px; font-size: 0.9rem;
+  }
+  .stat strong { font-size: 1.25rem; display: block; }
+  h2 {
+    font-size: 1.1rem; margin: 32px 0 12px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .card {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: 18px 20px; margin-bottom: 14px;
+  }
+  .card-head {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .badge {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
+    border-radius: 12px; padding: 2px 10px; white-space: nowrap;
+  }
+  .badge.confirmed { color: var(--confirmed); background: var(--confirmed-bg); }
+  .badge.plausible { color: var(--plausible); background: var(--plausible-bg); }
+  .badge.refuted { color: var(--refuted); background: var(--refuted-bg); border: 1px solid var(--border); }
+  .card h3 { font-size: 1rem; }
+  .loc {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.82rem; color: var(--muted);
+    margin-bottom: 10px; word-break: break-all;
+  }
+  .card p { font-size: 0.92rem; margin-bottom: 8px; }
+  .card p:last-child { margin-bottom: 0; }
+  .fix {
+    font-size: 0.88rem; background: var(--bg); border-radius: 6px;
+    padding: 8px 12px; margin-top: 10px;
+  }
+  .fix::before { content: "💡 권장 조치: "; font-weight: 600; }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.85em; background: var(--bg);
+    border-radius: 4px; padding: 1px 5px;
+  }
+  .refuted-card { opacity: 0.75; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 0.82rem; }
+  .conclusion {
+    background: #fff; border: 1px solid var(--border); border-left: 4px solid #0969da;
+    border-radius: 8px; padding: 16px 20px; margin-top: 28px; font-size: 0.94rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>코드리뷰 결과 — RBL 등재 시 존별 해제(delisting) 절차 안내</h1>
+  <div class="meta">
+    대상 커밋: <code>af0716f</code> · 리뷰 일자: 2026-08-02 · 방식: /code-review high (파인더 6종 → 후보 10건 중복 제거 → 후보별 검증)
+  </div>
+  <div class="summary-bar">
+    <div class="stat"><strong>5</strong>확정 (CONFIRMED)</div>
+    <div class="stat"><strong>3</strong>가능성 (PLAUSIBLE)</div>
+    <div class="stat"><strong>2</strong>기각 (REFUTED)</div>
+  </div>
+</header>
+
+<h2>확정된 이슈 (CONFIRMED)</h2>
+
+<div class="card">
+  <div class="card-head">
+    <span class="badge confirmed">CONFIRMED</span>
+    <h3>1. 알 수 없는 1xx 코드에 근거 없는 "악용된 정상 도메인" 안내</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/SpamhausDblProvider.java:79</div>
+  <p><code>isAbusedLegit()</code>이 <code>meaning != null</code> 확인 없이 last octet 100~199 범위만 검사한다. Spamhaus가 새 코드(예: 127.0.1.110)를 추가하면 evidence에는 "알 수 없는 리턴 코드"라고 표시하면서 guidance는 "사이트 해킹·오픈 리다이렉터 악용이 원인"이라고 단정 — 증거와 안내가 서로 모순된다.</p>
+  <p>직접 등재 분기는 <code>else if (meaning != null)</code>로 가드되어 있는데, 악용된 정상 도메인 분기에만 가드가 없다.</p>
+  <div class="fix">분류를 숫자 범위가 아닌 LISTINGS 맵 멤버십(102~106)에서 도출. 미지 코드는 특정 guidance 없이 일반 안내로 폴백.</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <span class="badge confirmed">CONFIRMED</span>
+    <h3>2. 미지 코드에서 check.spamhaus.org URL 소실 (회귀)</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/SpamhausDblProvider.java · DomainRblCheck.java:72</div>
+  <p>이전 커밋까지는 어떤 도메인 등재든 무조건 <code>https://check.spamhaus.org …</code> 안내가 나왔다. 이제 LISTINGS에 없고 100~199 범위 밖인 코드(예: 127.0.1.7, 127.0.1.50)는 guidance가 빈 리스트로 반환되고, DomainRblCheck의 폴백 문구("도메인 등재 사유를 확인하고 각 RBL의 해제 절차를 진행하세요")에는 URL이 없다.</p>
+  <p>사용자가 조회 링크를 가장 필요로 하는 <strong>미지 코드 상황에서만</strong> 링크가 사라지는 정보 회귀.</p>
+  <div class="fix">폴백 문구에 check.spamhaus.org URL 복원, 또는 미지 코드에도 조회 URL을 담은 기본 guidance 부여.</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <span class="badge confirmed">CONFIRMED</span>
+    <h3>3. 두 집계기의 폴백 정책 비대칭 (복붙 분기)</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/RblCheck.java:114 vs DomainRblCheck.java:69</div>
+  <p>guidance 수집 루프(LinkedHashSet → addAll → forEach)가 두 파일에 거의 그대로 복사됐는데, RblCheck는 일반 안내를 <strong>항상</strong> 내보내고 DomainRblCheck는 <strong>비었을 때만</strong> 내보낸다.</p>
+  <p>지금 당장 재현 가능: DBL 응답에 알려진 코드 + 미지 코드가 함께 오면 미지 등재에는 안내 줄이 하나도 없다 — 폴백은 set이 비어있지 않아 스킵되기 때문. 향후 두 번째 DomainRblProvider(예: SURBL) 추가 시에도 동일한 구멍이 생긴다.</p>
+  <div class="fix">폴백 정책을 한쪽으로 통일(권장: RblCheck처럼 일반 안내 상시 방출)하거나, 수집·방출 로직을 공용 헬퍼로 추출.</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <span class="badge confirmed">CONFIRMED</span>
+    <h3>4. DQS 키 없는 배포에서 "고정 IP" 근본 해결 안내 소실</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/RblCheck.java:116 · SpamhausZenDqsProvider.java (DELISTING)</div>
+  <p>동적 대역 관련 조언("고정 IP/정식 발신 경로 사용이 근본 해결책")이 ZEN의 DELISTING 맵(127.0.0.10/11)으로만 이동했다. ZEN은 DQS 키가 없으면 <code>enabled()=false</code>로 스킵되므로, 키 없는 배포에서 동적 IP가 PSBL/Barracuda에 등재되면 근본 원인 힌트를 못 본다.</p>
+  <p>단, 기존 문구도 PBL 미등재 상황에서 오해 소지가 있었으므로 단순 복원보다는 개선이 적절하다.</p>
+  <div class="fix">일반 안내에 중립 문구 추가: "동적/가정용 대역이라면 고정 IP 사용이 근본 해결책" (PBL 단정 없이).</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <span class="badge confirmed">CONFIRMED</span>
+    <h3>5. DBL 신규 로직 테스트 누락 (전역 규칙 위반)</h3>
+  </div>
+  <div class="loc">checker-core/…/test/…/rbl/SpamhausDblProviderTest.java · DomainRblCheckTest.java (미수정)</div>
+  <p>ZEN/IP RBL 쪽은 테스트를 추가했지만 DBL 쪽은 두 테스트 파일 모두 이 커밋에서 수정되지 않았다. provider 레벨 <code>v.guidance()</code> 검증, 미지 코드 동작("알 수 없는 리턴 코드"), DomainRblCheck 폴백 문구를 다루는 테스트가 전무하다.</p>
+  <p>전역 CLAUDE.md 규칙 "기능 개발 후 테스트 코드까지 작성할 것" 위반.</p>
+  <div class="fix">DBL provider 레벨 guidance 테스트 + 미지 코드(1xx / 비-1xx) + 혼합 코드 + 폴백 문구 테스트 추가. 이슈 1~3 수정과 함께 커버 권장.</div>
+</div>
+
+<h2>가능성 있는 이슈 (PLAUSIBLE — 저비용 방어 권장)</h2>
+
+<div class="card">
+  <div class="card-head">
+    <span class="badge plausible">PLAUSIBLE</span>
+    <h3>6. isAbusedLegit의 무방비 Integer.parseInt</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/SpamhausDblProvider.java:91</div>
+  <p>실제 dnsjava 경로에서는 A 레코드가 항상 dotted-quad라 사실상 안전하지만, <code>DnsQueryService</code>는 교체를 전제로 한 인터페이스다. 비숫자 값이 오면 NumberFormatException이 <code>DomainRblCheck.run()</code> 밖으로 전파되어 카드 전체가 ERROR — 실제 LISTED 결과를 가린다.</p>
+  <div class="fix">파싱 실패를 미지 코드로 취급하는 한 줄 가드 (try-catch 또는 127.0.1. 접두 확인).</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <span class="badge plausible">PLAUSIBLE</span>
+    <h3>7. 에러 코드가 루프 중간에 등재 결과를 버림</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/SpamhausZenDqsProvider.java:88 (SpamhausDblProvider 동일 패턴)</div>
+  <p><code>[127.0.0.2, 127.255.255.254]</code> 같은 혼합 응답이면 이미 수집한 확정 등재(SBL)를 버리고 <code>RblVerdict.error()</code>를 반환 — 카드가 FAIL 대신 WARN "확인 불가"가 되고, DNS 레코드 순서에 따라 결과가 갈린다. Spamhaus가 실제로 혼합 응답을 주는지는 미확인(쿼리 거부는 보통 전체 응답 조건)이라 PLAUSIBLE.</p>
+  <div class="fix">루프를 끝까지 돌고 등재가 하나라도 있으면 LISTED 우선, 등재 없이 에러 코드만 있을 때 ERROR 반환.</div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <span class="badge plausible">PLAUSIBLE</span>
+    <h3>8. RblVerdict에 null 방어 없음 + 사장된 1-arg 팩토리</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/RblVerdict.java:13, 22</div>
+  <p>compact constructor가 없어 미래 provider가 <code>null</code> guidance를 넘기면 집계 시점(<code>delistingGuidance.addAll</code>)에 NPE로 카드가 ERROR가 된다 — 등재되어 FAIL이어야 할 바로 그 순간에. 현재 호출처는 모두 안전하지만 "provider 추가"가 이 저장소의 공식 확장 지점이다.</p>
+  <p>또한 1-arg <code>listed(listings)</code> 팩토리는 이 커밋으로 호출처가 0곳이 됐다 — 남겨두면 미래 provider가 guidance 없는 LISTED를 조용히 만들 수 있다.</p>
+  <div class="fix">compact constructor에서 <code>Objects.requireNonNull</code> + <code>List.copyOf</code>, 1-arg <code>listed()</code> 삭제로 guidance 명시를 컴파일러가 강제.</div>
+</div>
+
+<h2>기각된 후보 (REFUTED)</h2>
+
+<div class="card refuted-card">
+  <div class="card-head">
+    <span class="badge refuted">REFUTED</span>
+    <h3>Mailspike 단일 안내 문구가 Z 리스트를 오도한다는 주장</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/MailspikeProvider.java:64</div>
+  <p>자동 회복 문장이 "평판 등급(L3~L5)"으로 명시적으로 한정돼 있고, 해제 요청 안내가 문두에 온다. 존당 1줄 유지는 사용자가 확정한 정책(2026-08-02)이라 코드별 분리 확장은 반려된 방향.</p>
+</div>
+
+<div class="card refuted-card">
+  <div class="card-head">
+    <span class="badge refuted">REFUTED</span>
+    <h3>guidance 중복 제거를 문자열 동일성으로 키잉하는 것이 취약하다는 주장</h3>
+  </div>
+  <div class="loc">checker-core/…/check/rbl/RblCheck.java:93 · DomainRblCheck.java:49</div>
+  <p>현재 모든 guidance 문구가 컴파일 타임 상수라 테스트된 불변식("다중 IP 같은 존 → 안내 1회")이 깨질 수 없다. 존 단위 키잉은 오히려 ZEN의 서브리스트별(SBL/XBL/PBL) 안내를 잘못 합쳐버려 의도된 동작을 깨뜨린다 — 문자열 동일성이 "실패 유형별 1회" 규칙을 정확히 구현하고 있다.</p>
+</div>
+
+<div class="conclusion">
+  <strong>종합:</strong> 이슈 1·2·3(미지 코드 처리와 폴백 정책)이 한 덩어리의 핵심 문제로, 함께 수정하는 것이 좋다. 이슈 5(테스트 보강) 진행 시 해당 케이스들을 같이 커버하면 된다. 6·7·8은 각각 한두 줄 수준의 저비용 방어로 봉쇄 가능하다.
+</div>
+
+<footer>
+  mail-server-config-checker · 커밋 af0716f 리뷰 · 파인더 6종(라인 스캔 / 제거 동작 감사 / 크로스파일 추적 / 재사용·단순화·효율 / 설계 심도 / 컨벤션) + 후보별 독립 검증
+</footer>
+
+</div>
+</body>
+</html>

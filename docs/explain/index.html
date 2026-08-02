@@ -1,0 +1,2109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mail-server-config-checker — 변경 이력 해설</title>
+<style>
+  :root {
+    --bg: #fbfbfa;
+    --surface: #ffffff;
+    --text: #21201c;
+    --muted: #6b6a66;
+    --line: #e4e2dd;
+    --accent: #2f6f4e;
+    --accent-soft: #eaf3ed;
+    --pass: #2f6f4e;
+    --warn: #8a6100;
+    --fail: #a33232;
+    --skip: #6b6a66;
+    --code-bg: #f5f4f1;
+    --callout: #fdf8ec;
+    --callout-line: #e5d5aa;
+    --maxw: 860px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #191917;
+      --surface: #201f1d;
+      --text: #e8e6e1;
+      --muted: #a3a19b;
+      --line: #35342f;
+      --accent: #78bb96;
+      --accent-soft: #1e2a23;
+      --pass: #78bb96;
+      --warn: #d6a94a;
+      --fail: #e08383;
+      --skip: #a3a19b;
+      --code-bg: #171715;
+      --callout: #241f14;
+      --callout-line: #4a3d20;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.75 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR",
+          "Malgun Gothic", sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 20px 120px; }
+
+  /* ---------- 헤더 ---------- */
+  header.top {
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    padding: 48px 20px 40px;
+    margin-bottom: 40px;
+  }
+  header.top .inner { max-width: var(--maxw); margin: 0 auto; }
+  header.top h1 { margin: 0 0 10px; font-size: 30px; line-height: 1.3; letter-spacing: -0.02em; }
+  header.top p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+  /* ---------- 타이포 ---------- */
+  h2 {
+    margin: 72px 0 18px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 25px;
+    letter-spacing: -0.02em;
+    scroll-margin-top: 16px;
+  }
+  h2 .num {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  h3 { margin: 40px 0 12px; font-size: 19px; letter-spacing: -0.01em; }
+  h4 { margin: 26px 0 8px; font-size: 16px; }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 650; }
+  a { color: var(--accent); }
+  code {
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+    font-size: 0.88em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    white-space: pre;
+    font-family: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 0 18px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  blockquote {
+    margin: 0 0 18px;
+    padding: 2px 0 2px 16px;
+    border-left: 3px solid var(--line);
+    color: var(--muted);
+  }
+  blockquote p:last-child { margin-bottom: 0; }
+
+  /* ---------- 표 ---------- */
+  .tablewrap { overflow-x: auto; margin: 0 0 20px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { border: 1px solid var(--line); padding: 8px 11px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); font-weight: 600; }
+
+  /* ---------- 콜아웃 ---------- */
+  .callout {
+    background: var(--callout);
+    border: 1px solid var(--callout-line);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 0 0 20px;
+    font-size: 15px;
+  }
+  .callout .label {
+    display: block;
+    font-weight: 650;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+
+  /* ---------- 다이어그램 공통 ---------- */
+  .fig {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 0 0 22px;
+    overflow-x: auto;
+  }
+  .fig .cap {
+    display: block;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* 가로 흐름 다이어그램 */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; justify-content: center; }
+  .node {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 13px;
+    font-size: 13px;
+    line-height: 1.5;
+    min-width: 108px;
+    text-align: center;
+  }
+  .node b { display: block; font-size: 13.5px; margin-bottom: 2px; }
+  .node small { color: var(--muted); font-size: 11.5px; display: block; }
+  .node.ok { border-color: var(--pass); background: var(--accent-soft); }
+  .node.bad { border-color: var(--fail); }
+  .node.warn { border-color: var(--warn); }
+  .arrow {
+    align-self: center;
+    padding: 0 9px;
+    color: var(--muted);
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .arrow small { display: block; font-size: 10.5px; line-height: 1.3; text-align: center; }
+
+  /* 세로 사다리 */
+  .ladder { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+  .ladder li {
+    display: flex;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: 14px;
+    align-items: baseline;
+  }
+  .ladder li:last-child { border-bottom: none; }
+  .ladder .cond { flex: 1 1 auto; }
+  .ladder .act {
+    flex: 0 0 auto;
+    font-size: 12.5px;
+    padding: 2px 9px;
+    border-radius: 20px;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .ladder .act.stop { border-color: var(--fail); color: var(--fail); }
+  .ladder .act.retry { border-color: var(--warn); color: var(--warn); }
+  .ladder .act.go { border-color: var(--pass); color: var(--pass); }
+
+  /* 상태 배지 */
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 650;
+    padding: 1px 8px;
+    border-radius: 20px;
+    border: 1px solid currentColor;
+    vertical-align: 2%;
+  }
+  .b-pass { color: var(--pass); }
+  .b-warn { color: var(--warn); }
+  .b-fail { color: var(--fail); }
+  .b-skip { color: var(--skip); }
+
+  /* UI 모형 */
+  .mock {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    max-width: 460px;
+    margin: 0 auto;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .mock .bar {
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--line);
+    padding: 7px 12px;
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+  .mock .row {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .mock .row:last-child { border-bottom: none; }
+  .mock .row .t { flex: 1 1 auto; }
+  .mock .row .peek { color: var(--muted); font-size: 11.5px; }
+
+  /* 타임라인 */
+  .timeline { border-left: 2px solid var(--line); padding-left: 18px; margin: 0 0 22px; }
+  .timeline .ev { position: relative; padding-bottom: 18px; }
+  .timeline .ev::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    top: 7px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--line);
+  }
+  .timeline .ev.key::before { background: var(--accent); }
+  .timeline .ev .h { font-weight: 650; font-size: 15px; }
+  .timeline .ev .m { color: var(--muted); font-size: 12.5px; font-family: monospace; }
+  .timeline .ev .d { font-size: 14px; }
+
+  /* ---------- 목차 ---------- */
+  nav.toc {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-bottom: 8px;
+  }
+  nav.toc h2 { margin: 0 0 10px; border: none; padding: 0; font-size: 17px; }
+  nav.toc ol { margin: 0; padding-left: 20px; font-size: 14.5px; }
+  nav.toc ol ol { padding-left: 16px; margin: 4px 0 8px; font-size: 13.5px; color: var(--muted); }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+
+  /* ---------- 퀴즈 ---------- */
+  .quiz { margin: 0 0 30px; }
+  .q {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .q .qh { font-weight: 650; margin-bottom: 12px; }
+  .q .qh .n { color: var(--accent); margin-right: 6px; }
+  .opt {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 9px 13px;
+    margin-bottom: 7px;
+    font: inherit;
+    font-size: 14.5px;
+    color: inherit;
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--accent); }
+  .opt:disabled { cursor: default; }
+  .opt.correct {
+    border-color: var(--pass);
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+  .opt.wrong { border-color: var(--fail); opacity: .85; }
+  .opt .mark { float: right; font-weight: 700; }
+  .expl {
+    display: none;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 7px;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    font-size: 14.5px;
+  }
+  .expl.show { display: block; }
+  .expl p:last-child { margin-bottom: 0; }
+  .expl .verdict { font-weight: 700; margin-bottom: 8px; }
+  .expl .verdict.ok { color: var(--pass); }
+  .expl .verdict.no { color: var(--fail); }
+  /* 퀴즈 구간 안에서만 점수 바가 따라다니도록 sticky 컨테이닝 블록을 한정 */
+  .quizwrap { position: relative; }
+  .score {
+    position: sticky;
+    bottom: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 30px;
+    padding: 9px 20px;
+    font-size: 14px;
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    margin-top: 20px;
+  }
+
+  footer {
+    margin-top: 70px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+
+  @media (max-width: 620px) {
+    header.top { padding: 32px 18px 26px; }
+    header.top h1 { font-size: 23px; }
+    h2 { font-size: 21px; margin-top: 52px; }
+    h3 { font-size: 17px; }
+    .flow { flex-direction: column; align-items: stretch; }
+    .arrow { padding: 4px 0; transform: rotate(90deg); }
+    .node { min-width: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="inner">
+    <h1>mail-server-config-checker — 변경 이력 해설</h1>
+    <p>
+      대상: <code>main</code> 커밋 <code>91475b4</code> ~ <code>6d904ff</code> (2026-07-25 ~ 07-28) ·
+      작성일 2026-08-02
+    </p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s0">시작하기 — 메일 인증 배경지식과 전체 지도</a>
+      <ol>
+        <li><a href="#s0-basic">3분 배경지식</a></li>
+        <li><a href="#s0-map">전체 지도</a></li>
+      </ol>
+    </li>
+    <li><a href="#s1">뼈대 만들기 (M1)</a></li>
+    <li><a href="#s2">DNS만으로 하는 검사 5종 (M2~M5)</a></li>
+    <li><a href="#s3">커버리지 확대와 폐기된 PR (M5.5)</a></li>
+    <li><a href="#s4">대전환 — 입력받지 말고 관찰하라 (M7)</a></li>
+    <li><a href="#s5">메일 원문을 읽는 검사들 (M8)</a></li>
+    <li><a href="#s6">퀴즈 20문항</a></li>
+    <li><a href="#s7">남은 이야기</a></li>
+  </ol>
+</nav>
+
+<p style="color:var(--muted);font-size:14.5px">
+  각 장은 <strong>배경 → 직관 → 코드</strong> 순서이고, 앞 장을 읽었다는 전제로 씌어 있습니다.
+  바쁘면 1장의 배경지식만 읽고 <a href="#s4">4장(실메일 전환)</a>과 <a href="#s5">5장(M8)</a>으로
+  건너뛰어도 됩니다 — 이 프로젝트의 가장 중요한 두 사건이 거기에 있습니다.
+</p>
+
+<!-- ==================== 0 ==================== -->
+<h2 id="s0"><span class="num">CHAPTER 0</span>시작하기 — 메일 인증 배경지식과 전체 지도</h2>
+
+<p>
+이 저장소는 <strong>테스트 메일 1통으로 메일 서버 설정을 진단하는 도구</strong>입니다.
+2026-07-25부터 07-28까지 <strong>나흘 동안</strong> main에 21개 커밋이 쌓였고
+(폐기된 브랜치의 5건까지 더하면 26개), 그 짧은 사이에
+<strong>“도메인을 입력받는 도구”에서 “실제 메일을 받아보는 도구”로 설계가 통째로 뒤집힌</strong>
+사건이 있었습니다.
+</p>
+
+<h3 id="s0-basic">3분 배경지식 — 메일 인증은 왜 이렇게 복잡한가</h3>
+<p>이미 SPF/DKIM/DMARC를 아신다면 <a href="#s0-map">전체 지도</a>로 건너뛰세요.</p>
+
+<h4>문제: SMTP는 발신자를 확인하지 않는다</h4>
+<p>
+1982년에 설계된 SMTP에는 인증이 없습니다. 누구나 아무 주소로나 메일을 보낼 수 있죠.
+그래서 <strong>누가 이 도메인을 대신해 메일을 보낼 수 있는가</strong>를 나중에 덧붙인 것이
+SPF·DKIM·DMARC 3종 세트입니다.
+</p>
+<p>여기서 반드시 구분해야 하는 것이 <strong>주소가 두 개</strong>라는 사실입니다.</p>
+
+<pre>S: MAIL FROM:&lt;bounce@mail.shop.co.kr&gt;     ← ① 봉투 발신자 (envelope from)
+S: RCPT TO:&lt;user@example.com&gt;
+S: DATA
+S: From: 고객센터 &lt;help@shop.co.kr&gt;        ← ② 헤더 발신자 (From:)
+S: Subject: 주문 확인
+S: ...</pre>
+
+<ul>
+  <li><strong>① 봉투 발신자</strong> — SMTP 대화에서 오가는 값. 반송 메일이 돌아갈 주소이고 사용자에게는 안 보입니다.</li>
+  <li><strong>② 헤더 발신자</strong> — 메일 프로그램에 표시되는 주소. 사용자가 보는 값입니다.</li>
+</ul>
+<p>
+이 둘은 <strong>서로 달라도 됩니다.</strong> 그리고 이 “달라도 된다”는 점이 DMARC alignment가
+필요해지는 이유이자, 이 프로젝트에서 가장 헷갈리는 부분입니다.
+</p>
+
+<h4>세 가지 인증 기술</h4>
+<div class="tablewrap">
+<table>
+  <tr><th>기술</th><th>무엇을 검증하나</th><th>사용하는 주소</th><th>근거 자료</th></tr>
+  <tr><td><strong>SPF</strong></td><td>이 <strong>IP</strong>가 이 도메인을 대신해 보낼 자격이 있나</td><td>① 봉투 발신자 도메인</td><td>DNS TXT</td></tr>
+  <tr><td><strong>DKIM</strong></td><td>이 <strong>메일 내용</strong>이 서명 이후 변조되지 않았나</td><td>서명의 <code>d=</code> 도메인</td><td>헤더의 전자서명 + DNS 공개키</td></tr>
+  <tr><td><strong>DMARC</strong></td><td>위 둘 중 하나라도 <strong>사용자가 보는 From:과 같은 도메인</strong>으로 통과했나</td><td>② 헤더 발신자</td><td>DNS TXT</td></tr>
+</table>
+</div>
+
+<p>
+DMARC의 존재 이유가 여기 있습니다. SPF와 DKIM은 각자 자기가 아는 도메인만 검증하므로,
+공격자가 자기 도메인(<code>evil.com</code>)으로 SPF를 완벽히 통과시키면서
+<code>From: ceo@bank.com</code>을 쓰는 것을 <strong>막지 못합니다.</strong>
+DMARC는 “인증에 성공한 도메인이 화면에 보이는 From:과 같은 조직이어야 한다”는
+조건(<strong>alignment</strong>)을 추가해 이 구멍을 막습니다.
+</p>
+
+<div class="fig">
+  <div class="flow">
+    <div class="node"><b>메일 도착</b><small>From: help@shop.co.kr</small></div>
+    <div class="arrow">→</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="flow" style="justify-content:flex-start">
+        <div class="node"><b>SPF 검증</b><small>봉투 bounce@mail.shop.co.kr<br>IP 허용됨 → pass</small></div>
+        <div class="arrow">→</div>
+        <div class="node ok"><b>alignment</b><small>mail.shop.co.kr 과<br>shop.co.kr = 같은 조직</small></div>
+      </div>
+      <div class="flow" style="justify-content:flex-start">
+        <div class="node"><b>DKIM 검증</b><small>d=shop.co.kr<br>서명 유효 → pass</small></div>
+        <div class="arrow">→</div>
+        <div class="node ok"><b>alignment</b><small>d= 와 From<br>= 같은 조직</small></div>
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="node ok"><b>DMARC pass</b><small>둘 중 하나면 충분</small></div>
+  </div>
+  <span class="cap">DMARC 판정 = (인증 통과 <em>그리고</em> 정렬) 이 SPF·DKIM 중 한 쪽에서 성립</span>
+</div>
+
+<h4>그 외 이 도구가 보는 것들</h4>
+<ul>
+  <li><strong>PTR / FCrDNS</strong> — IP를 역방향 조회하면 호스트명이 나오고, 그 호스트명을 다시
+      정방향 조회하면 원래 IP로 돌아와야 합니다. 안 되면 다수 수신 서버가 스팸 신호로 봅니다.</li>
+  <li><strong>RBL</strong> — 스팸 발신 IP 블랙리스트. <code>203.0.113.5</code>는 옥텟을 뒤집어
+      <code>5.113.0.203.zen.spamhaus.org</code>를 A 레코드로 조회합니다. 응답이 오면 “등재됨”.</li>
+  <li><strong>MX</strong> — 이 도메인의 메일을 받아줄 서버 목록.</li>
+  <li><strong>MTA-STS / TLS-RPT</strong> — 서버 간 구간의 TLS를 강제하고 실패를 리포트받는 표준.</li>
+</ul>
+
+<h3 id="s0-map">전체 지도</h3>
+<p>프로젝트는 마일스톤 단위로 진행됐고, 커밋 메시지에 <code>(M1)</code>, <code>(M5.5)</code> 같은 표기가 붙어 있습니다.</p>
+
+<div class="timeline">
+  <div class="ev"><div class="h">M1 · 스캐폴딩</div><div class="m">d3ff40b</div>
+    <div class="d">Check 인터페이스 · CheckEngine · DnsQueryService</div></div>
+  <div class="ev"><div class="h">M2 · SPF</div><div class="m">30f0bff</div>
+    <div class="d">레코드 파서 + 10-lookup 카운터</div></div>
+  <div class="ev"><div class="h">M3 · DMARC / MX / 전파</div><div class="m">4f23fd3</div>
+    <div class="d">정책 검증 + 다중 리졸버 비교</div></div>
+  <div class="ev"><div class="h">M4 · RBL</div><div class="m">ea250f2</div>
+    <div class="d">Spamhaus DQS · Barracuda · SpamCop</div></div>
+  <div class="ev"><div class="h">M5 · PTR + 웹</div><div class="m">e4ec33b, 1a68520, fda1f2f</div>
+    <div class="d">FCrDNS + REST API + 결과 UI + 아코디언</div></div>
+  <div class="ev key"><div class="h">M5.5 · 커버리지 확대</div><div class="m">ba332a7, faa9570, 652093d</div>
+    <div class="d">RBL 6종 + 도메인 RBL, 다중 IP, <strong>SPF check_host 실평가</strong>(사용자 원칙이 바꾼 커밋)</div></div>
+  <div class="ev"><div class="h">PR #1 · feature/coverage-gaps</div><div class="m">b6067db, cc19ad5, dc5010b, d34ef1c, 040eda1</div>
+    <div class="d">5건 구현했다가 <strong>폐기</strong> — M8에서 항목별 판정으로 부활</div></div>
+  <div class="ev"><div class="h">M6 · 수신 인프라</div><div class="m">8c88644</div>
+    <div class="d">Postfix pipe → 파일 적재 (서버 작업, <code>infra-work.md</code>)</div></div>
+  <div class="ev key"><div class="h">M7 · 실메일 전환 ★</div><div class="m">21849b4, 8124129</div>
+    <div class="d">입력 폼 제거, 주소 발급 → 폴링 → 자동 진단</div></div>
+  <div class="ev key"><div class="h">M8 · 원문 기반 검사 ★</div><div class="m">c1ee3ff, 6d904ff</div>
+    <div class="d">DKIM 서명 검증 · alignment · 헤더 품질 + PR #1 이관, 결과 페이지 리디자인</div></div>
+</div>
+
+<h4>이 프로젝트를 이해하는 3개의 열쇠</h4>
+<ol>
+  <li><strong><code>Check</code> 인터페이스 — “검사 추가 = 구현체 추가만으로”</strong><br>
+      PRD에 못 박힌 설계 규칙입니다. 12개의 검사가 추가되는 동안 엔진 코드는 M1 이후
+      사실상 손대지 않았습니다.</li>
+  <li><strong><code>DnsQueryService</code> — “검사 코드는 dnsjava를 직접 만지지 않는다”</strong><br>
+      모든 DNS 조회가 이 인터페이스를 지나갑니다. 덕분에 단위 테스트에서 네트워크를 전혀
+      쓰지 않습니다. 이 규칙은 M8에서 DKIM 공개키 조회까지 이 인터페이스를 거치게 하는 것으로
+      끝까지 지켜집니다.</li>
+  <li><strong>실메일 전환 — “입력받지 말고 관찰하라”</strong><br>
+      M7 이전에는 사용자가 도메인과 IP를 타이핑했습니다. 이후에는 도구가 SMTP 세션에서
+      IP·HELO·MAIL FROM을 <em>관찰</em>합니다. 입력값이 관찰값으로 바뀌면서
+      “물어볼 수 없어서 못 하던 검사”가 전부 가능해집니다.</li>
+</ol>
+
+<!-- ==================== 1 ==================== -->
+<h2 id="s1"><span class="num">CHAPTER 1</span>뼈대 만들기 — <code>Check</code> 인터페이스와 병렬 엔진</h2>
+<p style="color:var(--muted);font-size:14px">
+  다루는 커밋: <code>91475b4</code> · <code>d3ff40b</code> (M1) · <code>fe654e6</code>
+</p>
+
+<h3>배경 — 진단 도구가 풀어야 하는 구조적 문제</h3>
+<p>
+메일 서버 진단 도구는 겉보기엔 단순합니다. DNS를 몇 번 조회하고 결과를 보여주면 되니까요.
+하지만 실제로 만들어보면 세 가지 성가신 성질이 드러납니다.
+</p>
+<ol>
+  <li><strong>검사 항목이 계속 늘어난다.</strong> 이 프로젝트만 해도 SPF에서 시작해 최종 12개가
+      됐습니다. 검사를 추가할 때마다 엔진·API·UI를 고쳐야 한다면 금방 무너집니다.</li>
+  <li><strong>어떤 검사는 반드시 느리다.</strong> RBL은 6개 존에, 전파 검사는 리졸버 6곳에
+      조회를 던집니다. 하나가 타임아웃되면 나머지가 다 끝나도 사용자는 계속 기다립니다.</li>
+  <li><strong>결과가 통과/실패로 표현되지 않는다.</strong> Spamhaus 키가 없어 조회를 못 한 것은
+      통과도 실패도 아닙니다. <strong>“확인 불가”와 “문제 없음”을 절대 섞으면 안 됩니다.</strong></li>
+</ol>
+<p>M1 커밋은 코드를 거의 쓰지 않고 이 세 문제에 대한 답만 정해놓은 커밋입니다.</p>
+
+<h3>직관</h3>
+<h4>검사 하나를 “함수”로 못 박기</h4>
+<pre><code>public interface Check {
+    String id();       // "spf", "dmarc" — API 응답에 쓰이는 안정적 식별자
+    String title();    // UI에 보이는 이름
+    CheckResult run(CheckContext context);
+}</code></pre>
+<p>주석에 못 박힌 조건이 하나 있습니다.</p>
+<blockquote><p>
+Implementations must be <strong>stateless and thread-safe</strong>: the engine runs all
+checks concurrently against the same context.
+</p></blockquote>
+<p>
+검사 구현체는 상태를 갖지 않습니다. 그래서 엔진이 마음대로 병렬 실행할 수 있고,
+스프링 빈으로 싱글턴 하나만 두면 됩니다.
+</p>
+
+<h4>결과를 5단계로 나눈 이유</h4>
+<pre><code>public enum CheckStatus {
+    PASS(0), SKIP(1), WARN(2), ERROR(3), FAIL(4);
+}</code></pre>
+<p>괄호 안 숫자가 <strong>심각도</strong>입니다. 이 숫자 하나가 뒤에서 아주 유용해집니다.</p>
+<div class="tablewrap">
+<table>
+  <tr><th>상태</th><th>의미</th><th>실제 사례</th></tr>
+  <tr><td><span class="badge b-pass">PASS</span></td><td>문제 없음</td><td>SPF 레코드가 정상이고 <code>-all</code>로 끝남</td></tr>
+  <tr><td><span class="badge b-skip">SKIP</span></td><td>검사 자체를 못 함</td><td>Spamhaus DQS 키 미설정 / 메일 원문 없음</td></tr>
+  <tr><td><span class="badge b-warn">WARN</span></td><td>동작하지만 권장에 못 미침</td><td><code>p=none</code> DMARC, RSA 1024비트 DKIM 키</td></tr>
+  <tr><td><span class="badge b-fail">ERROR</span></td><td>조회 실패로 판정 불가</td><td>DNS 타임아웃, 검사 예외</td></tr>
+  <tr><td><span class="badge b-fail">FAIL</span></td><td>명확한 설정 오류</td><td>SPF 레코드 2개(RFC 위반), RBL 등재</td></tr>
+</table>
+</div>
+<p>
+핵심은 <code>SKIP</code>과 <code>PASS</code>를 갈라놓은 것입니다. “확인 못 했음”을 “괜찮음”으로
+보고하면 사용자를 속이는 도구가 됩니다. 이 원칙은 PRD 핵심 제약에도 명시돼 있고,
+뒤에서 RBL 오류 코드 처리에서 다시 등장합니다.
+</p>
+
+<h4>근거와 가이드를 분리한 결과 객체</h4>
+<pre><code>public record CheckResult(String checkId, String title, CheckStatus status,
+                          List&lt;String&gt; evidence, List&lt;String&gt; guidance, long elapsedMs)</code></pre>
+<ul>
+  <li><strong>evidence</strong> — 왜 이 판정이 나왔는지.
+      <code>"레코드: v=spf1 include:_spf.google.com ~all"</code></li>
+  <li><strong>guidance</strong> — 어떻게 고치는지.
+      <code>"레코드 끝에 ~all 또는 -all을 추가하세요"</code></li>
+</ul>
+<p>
+진단 도구가 “SPF 설정에 문제가 있습니다”만 말하면 쓸모가 없습니다. 근거와 처방을 구조적으로
+분리해 두면 UI는 두 목록을 다르게 그리기만 하면 됩니다.
+</p>
+<p>빌더에 재미있는 메서드가 하나 있습니다.</p>
+<pre><code>/** Raises the status only if the new one is more severe. */
+public Builder atLeast(CheckStatus s) {
+    if (s.isWorseThan(this.status)) { this.status = s; }
+    return this;
+}</code></pre>
+<p>
+검사 하나가 여러 문제를 발견할 수 있습니다. 구문 경고(WARN)가 있으면서 lookup 한도도
+넘었다면(FAIL) 최종 상태는 FAIL이어야 합니다. <code>atLeast()</code>는
+<strong>한 번 나빠진 상태가 뒤 코드에 의해 되돌아가지 않도록</strong> 보장합니다.
+<code>status()</code>는 무조건 덮어쓰고 <code>atLeast()</code>는 나빠질 때만 올린다 —
+이 구분이 이후 모든 검사 코드의 문법이 됩니다.
+</p>
+
+<h4>느린 검사가 전체를 막지 못하게</h4>
+<div class="fig">
+  <div class="flow">
+    <div class="node"><b>diagnose()</b></div>
+    <div class="arrow">→</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="node ok"><b>SPF</b><small>120 ms</small></div>
+      <div class="node ok"><b>DMARC</b><small>95 ms</small></div>
+      <div class="node ok"><b>MX</b><small>140 ms</small></div>
+      <div class="node bad"><b>RBL</b><small>5,000 ms 타임아웃</small></div>
+      <div class="node ok"><b>PTR</b><small>210 ms</small></div>
+    </div>
+    <div class="arrow">→<small>join</small></div>
+    <div class="node"><b>DiagnosisReport</b><small>RBL만 ERROR 카드<br>나머지는 정상 표시</small></div>
+  </div>
+  <span class="cap">타임아웃은 예외가 아니라 <em>결과값</em>이 된다</span>
+</div>
+
+<pre><code>List&lt;CompletableFuture&lt;CheckResult&gt;&gt; futures = checks.stream()
+        .map(check -&gt; CompletableFuture
+                .supplyAsync(() -&gt; runTimed(check, ctx), executor)
+                .completeOnTimeout(timeoutResult(check), perCheckTimeout.toMillis(), MILLISECONDS))
+        .toList();</code></pre>
+<p>
+<code>completeOnTimeout</code>이 핵심입니다. 느린 검사는
+<code>"검사가 제한 시간(5초)을 초과했습니다"</code>라는 ERROR 카드가 되고, 나머지 검사 결과는
+정상 표시됩니다. 예외도 마찬가지로 ERROR 결과로 변환됩니다.
+</p>
+
+<div class="callout">
+  <span class="label">📌 설계 패턴: 실패를 값으로 만들기</span>
+  <p>
+    엔진 전체에 <code>throws</code>가 하나도 없습니다. 타임아웃도 예외도 전부
+    <code>CheckResult</code>로 변환됩니다. 이 패턴은 M7의
+    <code>MailIntakeService.pollOnce()</code>(“절대 throw 안 함”)에서 다시 등장합니다.
+  </p>
+</div>
+
+<h3>코드 워크스루</h3>
+<h4>모듈 구조</h4>
+<div class="tablewrap">
+<table>
+  <tr><th>모듈</th><th>의존성</th><th>역할</th></tr>
+  <tr><td><code>checker-core</code></td><td><strong>Spring 없음</strong>, dnsjava + Guava</td><td>검사 엔진. 웹과 완전 분리</td></tr>
+  <tr><td><code>checker-web</code></td><td>Spring Boot 3.5.3, core</td><td>빈 조립 + REST + 정적 UI</td></tr>
+</table>
+</div>
+<p>
+core가 Spring을 모르는 것은 의도적입니다. PRD의 “재사용 전제” 원칙이고, 결과적으로 M7에서
+웹 진입점을 통째로 갈아엎을 때 core는 거의 손대지 않아도 됐습니다.
+</p>
+
+<h4>DNS 파사드</h4>
+<pre><code>public interface DnsQueryService {
+    /** Query via the system default resolver. For PTR, {@code name} is the IP literal. */
+    DnsAnswer query(String name, RecordType type);
+
+    /** Query via a specific resolver IP (public resolvers, authoritative NS, ...). */
+    DnsAnswer queryVia(String resolverIp, String name, RecordType type);
+}</code></pre>
+<p>
+주석의 “For PTR, name is the IP literal”이 편의 설계입니다. 검사 코드는
+<code>5.113.0.203.in-addr.arpa</code> 변환을 신경 쓰지 않고
+<code>dns.query("203.0.113.5", PTR)</code>이라 쓰면 됩니다.
+</p>
+<pre><code>public record DnsAnswer(DnsRcode rcode, List&lt;DnsRecordData&gt; records) {
+    public boolean isNxDomain() { ... }
+    /** Query itself failed (timeout, servfail, ...) — distinct from "no records". */
+    public boolean failed() { ... }
+    public boolean hasRecords() { ... }
+    public long minTtl() { ... }
+}</code></pre>
+<p>
+<code>failed()</code>(조회 자체 실패)와 <code>hasRecords()</code>(조회는 됐는데 레코드 없음)의
+구분이 <code>ERROR</code> vs <code>FAIL</code> 구분과 정확히 대응합니다.
+</p>
+
+<h4>첫 커밋부터 만든 RBL 추상화</h4>
+<p>M1 시점에는 RBL 검사가 아직 없습니다. 그런데 인터페이스는 이미 있습니다.</p>
+<pre><code>/**
+ * One RBL source. Abstracted from day one so zones can be added/removed and a
+ * commercial source (e.g. paid Spamhaus subscription) can be swapped in without
+ * touching the check logic.
+ */
+public interface RblProvider {
+    String name();
+    boolean enabled();            // DQS 키가 없으면 false → 검사는 SKIP + 안내
+    String queryName(String reversedIp);
+    RblVerdict interpret(DnsAnswer answer);
+}</code></pre>
+<p>
+“from day one”이라는 주석이 의도를 그대로 말해줍니다. 이 판단은 하루 뒤 M5.5에서 회수됩니다 —
+RBL 존을 3개에서 6개로 늘리고 도메인 RBL까지 추가할 때 <code>RblCheck</code> 본체는 거의
+손대지 않았습니다.
+</p>
+
+<h4>곁가지: <code>fe654e6</code>의 교훈</h4>
+<p>M1 다음 커밋은 코드가 아니라 <code>.gitignore</code> 수정입니다.</p>
+<pre>*.jar
+!gradle/wrapper/gradle-wrapper.jar   ← 예외가 무시 규칙보다 <b>뒤에</b> 와야 한다</pre>
+<p>
+gitignore는 뒤에 오는 패턴이 이깁니다. 순서가 잘못돼 wrapper jar가 커밋에서 빠졌고,
+그러면 <code>./gradlew</code>가 다른 사람 컴퓨터에서 동작하지 않습니다. 한 줄 이동으로
+빌드 재현성을 회복했습니다.
+</p>
+
+<!-- ==================== 2 ==================== -->
+<h2 id="s2"><span class="num">CHAPTER 2</span>DNS만으로 하는 검사 5종 + 웹 UI</h2>
+<p style="color:var(--muted);font-size:14px">
+  다루는 커밋: <code>30f0bff</code>(M2) · <code>4f23fd3</code>(M3) · <code>ea250f2</code>(M4) ·
+  <code>e4ec33b</code>(M5) · <code>1a68520</code>, <code>fda1f2f</code>
+</p>
+
+<h3>배경</h3>
+<p>
+M1이 만든 것은 빈 껍데기였습니다. M2부터 M5까지 나흘 사이에 검사 5종이 한꺼번에 들어옵니다.
+이 시점의 도구는 <strong>도메인 이름 하나(선택적으로 IP)만 알고 있습니다.</strong>
+DNS를 뒤져서 알아낼 수 있는 것을 전부 알아내는 것이 목표이고, “메일을 실제로 보내봐야만 알 수
+있는 것”은 아직 손댈 수 없습니다.
+</p>
+
+<div class="fig">
+  <div class="flow">
+    <div class="node"><b>example.com</b><small>입력</small></div>
+    <div class="arrow">→</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="node"><b>SPF</b><small>TXT</small></div>
+      <div class="node"><b>DMARC</b><small>_dmarc TXT</small></div>
+      <div class="node"><b>MX</b><small>MX + A/AAAA</small></div>
+      <div class="node"><b>전파</b><small>리졸버 비교</small></div>
+    </div>
+    <div class="arrow" style="opacity:.4">│</div>
+    <div class="node"><b>203.0.113.5</b><small>대상 IP</small></div>
+    <div class="arrow">→</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="node"><b>PTR</b><small>역방향→정방향</small></div>
+      <div class="node"><b>RBL</b><small>블랙리스트</small></div>
+    </div>
+  </div>
+  <span class="cap">도메인으로 4종, IP로 2종</span>
+</div>
+
+<h3>직관</h3>
+
+<h4>① SPF — 문법이 맞아도 동작하지 않는 레코드</h4>
+<p>
+문법 오류는 눈으로도 잡히지만, 실무에서 훨씬 흔한 실패는 <strong>10-lookup 한도 초과</strong>입니다.
+RFC 7208은 SPF 평가 중 발생하는 <strong>DNS 조회 횟수를 10회로 제한</strong>합니다.
+<code>include</code>는 대상 도메인의 SPF를 다시 평가하므로 <strong>재귀적으로 늘어납니다.</strong>
+</p>
+<pre>example.com:  v=spf1 include:_spf.google.com include:sendgrid.net -all
+                     └─ 1회                   └─ 1회                        = 2
+
+_spf.google.com: v=spf1 include:_netblocks... include:_netblocks2... ~all   = +4
+
+sendgrid.net: v=spf1 include:sendgrid.net a mx ...                          = +3
+                                                                    ────────────
+                                                                        합계 9  (아슬아슬)</pre>
+<p>
+한도를 넘으면 수신 서버는 <strong>permerror</strong>를 내고 SPF 전체를 무효 처리합니다.
+레코드는 멀쩡해 보이는데 인증이 통째로 안 되는, 눈으로 찾기 가장 어려운 고장입니다.
+<strong>void lookup</strong> 제한(2회)도 있어서, 없어진 서비스의 <code>include</code>를
+방치하면 여기 걸립니다.
+</p>
+<pre><code>public static final int MAX_LOOKUPS = 10;
+public static final int MAX_VOID_LOOKUPS = 2;</code></pre>
+<p>순환 참조(<code>a</code>→<code>b</code>→<code>a</code>)도 <code>visited</code> 집합으로 잡습니다.</p>
+
+<div class="callout">
+  <span class="label">📌 정적 린트의 한계를 명시하기</span>
+  <p>
+    <code>%{i}</code> 같은 <strong>세션 의존 매크로</strong>가 든 항목은 실제 발신 IP를 모르면
+    평가할 수 없습니다. 이 검사는 그런 항목을 <strong>횟수만 세고 재귀는 생략</strong>하며,
+    evidence에 그 사실을 적습니다. “모르는 것을 모른다고 말하기”가 여기서도 지켜지고,
+    이 한계는 M7에서 실제 세션 값이 생기며 해소됩니다.
+  </p>
+</div>
+
+<h4>② DMARC — 조직 도메인 폴백</h4>
+<p>
+<code>mail.shop.co.kr</code>에 DMARC 레코드가 없다고 정책이 없는 게 아닙니다.
+RFC 7489 §6.6.3에 따라 수신 서버는 이렇게 찾습니다.
+</p>
+<pre>① _dmarc.mail.shop.co.kr  →  없음
+② 조직 도메인을 구해서 재시도 (mail.shop.co.kr → shop.co.kr)
+③ _dmarc.shop.co.kr  →  발견!  이때는 p= 대신 sp=(서브도메인 정책) 적용</pre>
+<p>
+문제는 ②입니다. <code>shop.co.kr</code>의 조직 도메인은 <code>shop.co.kr</code>이지
+<code>co.kr</code>이 아닙니다. 이 규칙은 알고리즘으로 계산할 수 없고
+<strong>Public Suffix List</strong>를 봐야 합니다. 그래서 Guava를 의존성에 넣었습니다.
+</p>
+
+<h4>③ MX — RFC 위반 3종</h4>
+<div class="tablewrap">
+<table>
+  <tr><th>상황</th><th>판정</th><th>근거</th></tr>
+  <tr><td>MX 없음 + A 있음</td><td><span class="badge b-warn">WARN</span></td><td>암묵적 MX로 동작하나 사고 유발 (RFC 5321 §5.1)</td></tr>
+  <tr><td>MX 없음 + A 없음</td><td><span class="badge b-fail">FAIL</span></td><td>메일을 아예 받을 수 없음</td></tr>
+  <tr><td>MX가 CNAME을 가리킴</td><td>위반</td><td>RFC 5321 §5.1 / RFC 2181 §10.3</td></tr>
+  <tr><td><code>MX 0 .</code> (Null MX)</td><td>정보</td><td>RFC 7505 — “이 도메인은 메일 안 받음”</td></tr>
+</table>
+</div>
+<pre><code>return b.status(CheckStatus.WARN)
+        .evidence("MX 레코드 없음 — A 레코드(...)로 암묵적 MX 동작 (RFC 5321 §5.1)")
+        .guidance("명시적 MX 레코드를 추가하세요. 암묵적 MX 의존은 운영상 사고로 이어지기 쉽습니다")</code></pre>
+<p>“틀렸다”가 아니라 “동작하지만 위험하다”고 말하고, 근거 RFC 절까지 적어줍니다.</p>
+
+<h4>④ DNS 전파 — “설정이 틀린 것”과 “아직 퍼지는 중”을 구분</h4>
+<p>
+DNS를 방금 고친 사람이 가장 궁금해하는 것은 “내가 잘못 넣은 건가, 아직 안 퍼진 건가”입니다.
+전자는 고쳐야 하고 후자는 기다려야 합니다. 구분하는 방법은 <strong>기준값과 비교</strong>입니다.
+</p>
+<div class="fig">
+  <div class="flow">
+    <div class="node ok"><b>권한 NS</b><small>도메인의 진짜 답<br>= 기준값</small></div>
+    <div class="arrow">vs</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="node"><b>8.8.8.8</b><small>Google</small></div>
+      <div class="node"><b>1.1.1.1</b><small>Cloudflare</small></div>
+      <div class="node"><b>9.9.9.9</b><small>Quad9</small></div>
+      <div class="node"><b>KT / SKB / LGU+</b><small>국내 통신사</small></div>
+    </div>
+    <div class="arrow">→</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="node ok"><b>일치</b><small>전파 완료</small></div>
+      <div class="node warn"><b>불일치</b><small>캐시 잔여 TTL 표시</small></div>
+      <div class="node"><b>무응답</b><small>불일치와 구분</small></div>
+    </div>
+  </div>
+  <span class="cap">권한 NS의 답이 진실, 공개 리졸버의 답은 캐시. 검사 대상은 A / MX / SPF / DMARC</span>
+</div>
+<p>
+기준값 없이 리졸버들끼리만 비교하면 “전부 똑같이 틀린 옛날 값”을 “일치 = 정상”으로
+오판합니다. 무응답을 불일치와 구분한 것도 중요합니다(Quad9 오탐 안내 포함).
+</p>
+
+<h4>⑤ RBL — 오판이 가장 위험한 검사</h4>
+<pre>확인할 IP:  203.0.113.5
+옥텟 뒤집기: 5.113.0.203
+조회:       5.113.0.203.zen.dq.spamhaus.net  A?
+응답 있음 → 등재됨.  NXDOMAIN → 미등재.</pre>
+<p>
+문제는 <strong>Spamhaus가 공개 리졸버를 통한 조회를 차단</strong>한다는 것입니다.
+차단할 때 무응답이 아니라 <code>127.255.255.x</code> 형태의 <strong>오류 코드로 응답</strong>합니다.
+</p>
+<pre><code>for (String code : answer.values()) {
+    if (code.startsWith("127.255.255.")) {
+        // Query rejected (public resolver, bad key, volume limit) — NOT "clean".
+        return RblVerdict.error("DQS 오류 코드 " + code
+            + " — 쿼리가 거부됨(키/리졸버 문제). 미등재로 판단하면 안 됨");
+    }
+    ...
+}</code></pre>
+<p>
+순진하게 만든 체커는 이 응답을 “127.0.0.x가 아니니 등재 아님”으로 읽습니다. 그러면
+<strong>블랙리스트에 올라 있는 서버에게 “깨끗합니다”라고 보고</strong>하게 됩니다.
+</p>
+<div class="callout">
+  <span class="label">CLAUDE.md 설계 규칙</span>
+  <p>“RBL 응답 해석 시 오류 코드(Spamhaus <code>127.255.255.x</code>)를
+     <strong>미등재로 절대 오판하지 말 것</strong>”</p>
+</div>
+<p>
+해결책은 <strong>DQS</strong>입니다. 조회 이름에 계정 키를 넣으면 어느 리졸버를 거치든
+정상 응답을 받습니다.
+</p>
+<pre><code>public String queryName(String reversedIp) {
+    return reversedIp + "." + dqsKey + ".zen.dq.spamhaus.net";
+}</code></pre>
+<p>
+키가 없으면 검사하는 척하지 않고 <strong>SKIP + 발급 안내</strong>를 냅니다. 그리고 키는
+<strong>절대 evidence에 노출하지 않습니다</strong> — 조회 이름에 키가 들어 있으므로
+evidence에는 <code>provider.name()</code>만 씁니다.
+</p>
+
+<h4>⑥ PTR / FCrDNS — 왕복 확인</h4>
+<div class="fig">
+  <div class="flow">
+    <div class="node"><b>203.0.113.5</b></div>
+    <div class="arrow">→<small>PTR</small></div>
+    <div class="node"><b>mail.example.com</b></div>
+    <div class="arrow">→<small>A</small></div>
+    <div class="node ok"><b>203.0.113.5</b><small>✅ FCrDNS 성립</small></div>
+  </div>
+  <div class="flow" style="margin-top:12px">
+    <div class="node"><b>203.0.113.5</b></div>
+    <div class="arrow">→<small>PTR</small></div>
+    <div class="node"><b>mail.example.com</b></div>
+    <div class="arrow">→<small>A</small></div>
+    <div class="node bad"><b>203.0.113.9</b><small>❌ 정방향 불일치</small></div>
+  </div>
+  <span class="cap">PTR만 있으면 부족하다 — 원래 IP로 되돌아와야 한다</span>
+</div>
+<p>
+IPv6에서 함정이 하나 있습니다. <code>2001:db8::1</code>과
+<code>2001:db8:0:0:0:0:0:1</code>은 <strong>같은 주소인데 문자열이 다릅니다.</strong>
+문자열로 비교하면 정상 설정을 실패로 오판합니다.
+</p>
+<pre><code>/** RFC 5952 canonical form so "2001:db8::1" and "2001:db8:0:0:0:0:0:1" compare equal. */
+static String canonicalIp(String ip) {
+    return InetAddresses.toAddrString(InetAddresses.forString(ip));
+}</code></pre>
+<p>
+이 버그는 실제 QA에서 발견됐습니다 —
+<code>docs/qa/issues/TC-01-007-IPv6-FCrDNS-표기비교-오탐/</code>에 리포트가 남아 있습니다.
+</p>
+
+<h3>코드 워크스루</h3>
+<h4>검사 5종의 공통 골격</h4>
+<pre><code>public CheckResult run(CheckContext ctx) {
+    CheckResult.Builder b = CheckResult.builder(id(), title());
+
+    // 1) 조회
+    DnsAnswer ans = dns.query(..., RecordType.TXT);
+
+    // 2) 조회 자체가 실패했나 → ERROR로 조기 반환
+    if (ans.failed()) return b.status(ERROR).evidence("...조회 실패").build();
+
+    // 3) 판정 (여러 항목을 atLeast로 누적)
+    if (문제1) b.atLeast(WARN).evidence("...").guidance("...");
+    if (문제2) b.atLeast(FAIL).evidence("...").guidance("...");
+
+    return b.build();
+}</code></pre>
+
+<h4>웹 레이어 (M5) — <strong>M7에서 통째로 사라짐</strong></h4>
+<pre>GET /api/v1/diagnose?domain=example.com&amp;ip=203.0.113.5</pre>
+<ul>
+  <li><code>DiagnoseController</code> — 검증 후 엔진 실행</li>
+  <li><code>InputValidator</code> — IDN(한글 도메인) → punycode, URL 붙여넣기 허용 등 실용적 정규화</li>
+  <li><code>CheckerConfig</code> — 검사 6종 빈 조립, 타임아웃·리졸버·RBL 키를 <code>application.yml</code>로 외부화</li>
+</ul>
+<p>
+<code>CheckerConfig</code>가 M1 설계 규칙이 실제로 지켜지는 지점입니다 — 새 검사를 추가할 때
+<code>@Bean</code> 메서드 하나만 늘어납니다.
+</p>
+
+<h4>UI: 아코디언</h4>
+<p>
+검사 카드 6개에 각각 evidence가 5~10줄이면 화면이 감당이 안 됩니다.
+<code>&lt;details&gt;</code>로 접되, <strong>접는 규칙</strong>이 중요합니다.
+</p>
+<pre><code>// 문제 카드(WARN 포함)는 펼친 채로 시작, PASS/SKIP은 클릭 전까지 접힘
+const open = (r.status === 'FAIL' || r.status === 'ERROR' || r.status === 'WARN') ? ' open' : '';</code></pre>
+<div class="fig">
+  <div class="mock">
+    <div class="bar">진단 결과 — example.com</div>
+    <div class="row"><span class="badge b-fail">FAIL</span><span class="t">SPF</span><span class="peek">▼ 펼침</span></div>
+    <div class="row"><span class="badge b-warn">WARN</span><span class="t">DMARC</span><span class="peek">▼ 펼침</span></div>
+    <div class="row"><span class="badge b-pass">PASS</span><span class="t">MX / DNS 배포</span><span class="peek">▶ 접힘</span></div>
+    <div class="row"><span class="badge b-skip">SKIP</span><span class="t">RBL 등재 여부</span><span class="peek">▶ 접힘</span></div>
+  </div>
+  <span class="cap">문제 상태만 자동으로 펼쳐진다</span>
+</div>
+<p>
+<code>1a68520</code>에서는 FAIL/ERROR만 펼쳤는데, 다음 커밋 <code>fda1f2f</code>에서 WARN을
+추가했습니다. “주의해야 할 것을 접어두면 안 본다”는 판단입니다. 두 줄짜리 커밋이지만
+UX 판단이 들어 있습니다.
+</p>
+
+<!-- ==================== 3 ==================== -->
+<h2 id="s3"><span class="num">CHAPTER 3</span>커버리지 확대와, 폐기된 PR 한 건</h2>
+<p style="color:var(--muted);font-size:14px">
+  다루는 커밋: <code>3e177d1</code> · <code>ba332a7</code>(M5.5) · <code>faa9570</code> ·
+  <code>652093d</code> · <code>5f99e8e</code> / 폐기된 PR #1:
+  <code>b6067db</code>, <code>cc19ad5</code>, <code>dc5010b</code>, <code>d34ef1c</code>, <code>040eda1</code>
+</p>
+
+<h3>배경</h3>
+<p>
+M5까지 오면 도구는 “돌아가는 상태”가 됩니다. 여기서부터는 <strong>있는 검사를 더 정확하게,
+더 넓게</strong> 만드는 작업입니다. 이 구간에 이 프로젝트에서 가장 흥미로운 두 사건이 있습니다.
+</p>
+<ol>
+  <li>사용자가 던진 <strong>한 문장이 마일스톤 경계를 바꾼</strong> 사건 (<code>652093d</code>)</li>
+  <li>5개 커밋짜리 PR이 <strong>머지되지 못하고 통째로 폐기</strong>된 사건 (PR #1)</li>
+</ol>
+
+<h3>직관</h3>
+
+<h4>① RBL을 6종으로 — 그런데 존마다 응답 의미가 다르다</h4>
+<div class="tablewrap">
+<table>
+  <tr><th>존</th><th>127.0.0.1</th><th>127.0.0.2</th><th>127.0.0.3</th><th>127.0.0.4</th><th>127.0.0.5</th></tr>
+  <tr><td>Spamhaus ZEN</td><td>—</td><td>SBL 등재</td><td>SBL CSS</td><td>XBL</td><td>XBL</td></tr>
+  <tr><td>Hostkarma</td><td><strong>화이트리스트</strong></td><td>블랙</td><td><strong>옐로(중립)</strong></td><td>브라운</td><td><strong>NOBL(중립)</strong></td></tr>
+</table>
+</div>
+<p>
+Hostkarma는 순수 블랙리스트가 아니라 <strong>평판 서비스</strong>입니다. 공통 로직으로
+“127.0.0.x면 등재”라고 짰다면 <strong>화이트리스트에 오른 서버를 블랙리스트 등재로 보고</strong>하는
+정반대 오판이 났을 겁니다.
+</p>
+<pre><code>switch (code) {
+    case "127.0.0.2" -&gt; listings.add("블랙리스트 (스팸 발신 이력) [" + code + "]");
+    case "127.0.0.4" -&gt; listings.add("브라운리스트 (스팸/정상 혼재 발신) [" + code + "]");
+    case "127.0.0.1", "127.0.0.3", "127.0.0.5" -&gt; {
+        // white / yellow / NOBL — positive or neutral, not a listing.
+    }
+    ...
+}</code></pre>
+<p>
+같은 커밋에서 <strong>도메인 RBL</strong>(Spamhaus DBL)도 추가됩니다. <code>queryName</code>이
+받는 인자가 “뒤집힌 IP”가 아니라 “도메인”이라 인터페이스를 따로 만들었습니다
+(<code>DomainRblProvider</code>). DQS 키는 ZEN과 공유합니다.
+</p>
+
+<h4>② 다중 IP — 카드는 하나, 결과는 IP별로</h4>
+<blockquote><p>
+<strong>PRD 설계 규칙</strong><br>
+PTR/RBL은 다중 대상 IP를 지원 — <strong>검사 카드는 1개 유지</strong>, IP별 결과는 evidence에
+나열(다중일 때만 <code>[ip]</code> 태그), 상태는 <strong>worst-of</strong> 집계,
+guidance는 실패 유형별 <strong>1회만</strong>
+</p></blockquote>
+<pre><code>// Prefix evidence with the IP only when there are several, so single-IP output stays clean.
+String tag = ips.size() &gt; 1 ? "[" + ip + "] " : "";</code></pre>
+<p>
+IP가 하나면 태그를 붙이지 않습니다. 흔한 경우의 출력이 지저분해지지 않게 하는 배려이고,
+이 관용구는 <code>SpfCheck</code>·<code>RblCheck</code>·<code>PtrCheck</code> 세 곳에서
+똑같이 반복됩니다. guidance를 1회만 내기 위해 코드는 <code>anyMissingPtr</code>,
+<code>anyFcrdnsFail</code> 같은 플래그를 모았다가 <strong>루프 밖에서</strong> 출력합니다.
+</p>
+
+<h4>③ <code>652093d</code> — 사용자의 한 문장이 계획을 바꾸다</h4>
+<p>
+<strong>그때까지의 문제</strong>: SPF 검사는 레코드의 <em>문법</em>만 봤습니다. 그래서 사용자가
+발신 IP를 입력해도, 레코드가 문법적으로 멀쩡하면 <strong>PASS</strong>가 나왔습니다.
+</p>
+<pre>입력:   domain=example.com,  ip=203.0.113.99
+레코드: v=spf1 ip4:198.51.100.0/24 -all      ← 99는 어디에도 없다
+결과:   PASS  😱</pre>
+<p>
+원래 계획은 “실제 발신 IP 평가는 2단계(실메일 모드)”였습니다. 하지만 사용자가 원칙을 제시합니다.
+</p>
+<div class="callout">
+  <span class="label">사용자 원칙</span>
+  <p>도메인 + 발신 IP로 검증 가능한 것은 2단계로 미루지 말 것</p>
+</div>
+<p>
+맞는 말입니다. <code>check_host(IP, 도메인, 발신자)</code>는 RFC 7208이 정의한 함수이고,
+세 인자 중 앞의 둘이 이미 있습니다. 발신자는 <code>postmaster@도메인</code>으로 합성하면 됩니다.
+그래서 <code>SpfEvaluator</code>(569줄)가 1단계로 당겨져 들어옵니다.
+</p>
+<p>여기서 미묘한 문제가 하나 있습니다. <strong>MX에서 도출한 IP로 SPF를 평가하면 안 됩니다.</strong></p>
+<div class="fig">
+  <div class="flow">
+    <div class="node"><b>MX 레코드의 IP</b><small>메일을 <em>받는</em> 서버</small></div>
+    <div class="arrow">≠</div>
+    <div class="node"><b>SPF 허용 IP</b><small>메일을 <em>보내는</em> 서버</small></div>
+    <div class="arrow">→</div>
+    <div class="node bad"><b>평가하면 FAIL</b><small>정상 설정을 오류로 보고</small></div>
+  </div>
+</div>
+<pre><code>/**
+ * @param ipsUserProvided true only when targetIps came from user input — SPF check_host
+ *                        evaluation runs only then (MX-derived inbound IPs are not the
+ *                        outbound IPs, so evaluating them would mislead)
+ */</code></pre>
+<p>
+<strong>남는 한계</strong>도 정직하게 표시합니다. <code>%{h}</code>(HELO) 같은 세션 전용 매크로가
+든 메커니즘은 발신 IP만으로 평가할 수 없으므로 건너뛰고 evidence에 적습니다. 이 마지막 조각은
+M7에서 실제 세션이 생기며 채워집니다.
+</p>
+
+<h4>④ 폐기된 PR #1 — 기반이 사라지면 코드도 사라진다</h4>
+<p>2026-07-26, 커버리지 확대 5건이 <code>feature/coverage-gaps</code> 브랜치에 구현됩니다.
+그런데 바로 다음 날, M7이 <strong>도메인/IP 입력 폼과 <code>GET /api/v1/diagnose</code>를 제거</strong>합니다.
+PR #1의 코드 상당수가 그 위에 서 있었습니다 — <code>InputValidator</code>,
+<code>TargetIpResolver</code>. 발판이 사라진 겁니다.</p>
+<p>PR은 닫혔고, 대신 <code>m8-backlog.md</code>에 <strong>항목별 판정</strong>이 기록됩니다.</p>
+<div class="tablewrap">
+<table>
+  <tr><th>#</th><th>항목</th><th>판정</th><th>이유</th></tr>
+  <tr><td>1</td><td>DMARC 외부 리포트 승인</td><td><strong>그대로 이식</strong></td><td>도메인만 필요 — 진입점과 무관</td></tr>
+  <tr><td>2</td><td>IPv6 지원</td><td><strong>범위 축소 재작성</strong></td><td>MX 도출부는 폐기, RBL nibble 조회만 살림</td></tr>
+  <tr><td>3</td><td>제네릭 PTR 경고</td><td><strong>그대로 이식</strong></td><td>실메일에서 오히려 더 정확해짐</td></tr>
+  <tr><td>4</td><td>사설 IP 입력 검증</td><td><strong>대부분 사장</strong></td><td>M7의 <code>IpClassifier</code>가 이미 담당</td></tr>
+  <tr><td>5</td><td>MTA-STS / TLS-RPT</td><td><strong>그대로 이식</strong></td><td>도메인만 필요</td></tr>
+</table>
+</div>
+<p>
+이 판정표가 좋은 이유는 <strong>“버린다”와 “옮긴다”를 항목별로 나눴다</strong>는 점입니다.
+5건을 통째로 살리려 했다면 이미 없어진 <code>TargetIpResolver</code>를 되살려야 했을 것이고,
+통째로 버렸다면 도메인만 있으면 되는 MTA-STS까지 날렸을 겁니다.
+</p>
+<p>
+실제로 M8에서 1·3·5는 원본 커밋이 <strong>클린 적용</strong>됐습니다 — 대상 파일이 그 사이에
+변경되지 않았기 때문입니다.
+</p>
+<div class="callout">
+  <span class="label">📌 배울 점</span>
+  <p>
+    브랜치를 지우지 않고 원격에 보존해 둔 것도 판단이었습니다. <code>m8-backlog.md</code>에
+    <code>git show &lt;해시&gt;</code>로 참조하는 방법까지 적혀 있습니다.
+    코드를 버리는 것과 <strong>결정 근거를 버리는 것</strong>은 다릅니다.
+  </p>
+</div>
+
+<h3>코드 워크스루</h3>
+<h4><code>SpfEvaluator</code> — 569줄의 재귀 평가기</h4>
+<pre><code>public enum Verdict { PASS, FAIL, SOFTFAIL, NEUTRAL, PERMERROR, TEMPERROR }
+
+public Evaluation evaluate(String ip, String domain, List&lt;SpfTerm&gt; terms, SmtpSession session)</code></pre>
+<p>메커니즘별 매처가 하나씩 있습니다.</p>
+<pre><code>private Match matchIp4(...)      // CIDR 비교
+private Match matchIp6(...)
+private Match matchA(...)        // 도메인의 A/AAAA와 비교 (dual-CIDR 지원)
+private Match matchMx(...)       // MX 호스트들의 주소와 비교
+private Match matchPtr(...)      // 역방향 → 정방향 (RFC 7208 §5.5: 오류 시 매칭 안 함)
+private Match matchExists(...)   // 매크로 확장 후 A 조회 성공 여부
+private Match matchInclude(...)  // 재귀
+private Outcome followRedirect(...)</code></pre>
+<p>
+<code>Match</code>가 <code>MATCHED / NO / SKIPPED / TEMPERROR / PERMERROR</code> 5값인 것에
+주목하세요. <code>SKIPPED</code>는 “세션 매크로 때문에 평가 못 함”입니다. 못 한 것을
+“매칭 안 됨”으로 처리하면 안 되기 때문에 값을 따로 뒀습니다 — 1장의
+<code>SKIP</code> vs <code>PASS</code> 원칙과 같은 사고방식입니다.
+</p>
+<pre><code>private static final Pattern MACRO = Pattern.compile("%\\{([a-zA-Z])(\\d*)(r?)([.\\-+,/_=]*)}");</code></pre>
+<p>
+<code>%{ir}.zen.spamhaus.org</code>에서 <code>i</code>=IP, <code>r</code>=역순, 숫자=레이블 개수
+제한을 처리합니다. <code>%{p}</code>는 RFC 자체가 권장하지 않고 조회 비용이 커서
+<strong>항상 평가에서 제외</strong>합니다.
+</p>
+
+<h4>비밀값 관리 (<code>3e177d1</code>)</h4>
+<pre>application.yml               ← 커밋됨. 키 자리는 비어 있음
+application-local.yml         ← .gitignore 대상. 실제 키
+application-local.yml.example ← 커밋됨. 템플릿</pre>
+<p>
+배포 시에는 <code>SPAMHAUS_DQS_KEY</code> 환경변수를 씁니다. <code>build.gradle</code>에서
+<code>bootRun</code>이 기본으로 <code>local</code> 프로필을 켜도록 해서 매번 지정하지 않게 했습니다.
+</p>
+
+<h4>QA 시트가 저장소에 남아 있다</h4>
+<pre>docs/qa/QA-20260725-diagnose-ui.md
+docs/qa/QA-20260726-multi-ip.md
+docs/qa/QA-20260726-spf-checkhost-ip-eval.md
+docs/qa/issues/TC-01-007-IPv6-FCrDNS-표기비교-오탐/report.md + screenshot-001.jpg
+docs/qa/issues/TC-03-005-다중IP-중복표기/report.md</pre>
+<p>
+브라우저 자동화로 실제 화면을 검증하고, 실패 케이스는 스크린샷과 함께 이슈 폴더에 남깁니다.
+사용자 전역 규칙에 “웹 기능은 <strong>테스트 → QA → 커밋</strong> 순서”가 있고, 그게 저장소에
+흔적으로 남은 것입니다.
+</p>
+
+<!-- ==================== 4 ==================== -->
+<h2 id="s4"><span class="num">CHAPTER 4</span>대전환 — 입력받지 말고 관찰하라 (M7)</h2>
+<p style="color:var(--muted);font-size:14px">
+  다루는 커밋: <code>8c88644</code> · <code>21849b4</code> · <code>8124129</code>
+</p>
+
+<h3>배경 — 정적 진단의 벽</h3>
+<p>
+M5.5까지 만든 도구는 도메인 하나로 알아낼 수 있는 것은 거의 다 알아냅니다.
+그런데 계속 걸리는 항목들이 있었습니다.
+</p>
+<div class="tablewrap">
+<table>
+  <tr><th>알고 싶은 것</th><th>도메인만으로 가능한가</th></tr>
+  <tr><td>이 서버가 실제로 어떤 IP에서 메일을 보내나</td><td>❌ 사용자가 타이핑해줘야 함. 대개 정확히 모름</td></tr>
+  <tr><td>DKIM 셀렉터가 뭔가</td><td>❌ <strong>DNS로 열거 자체가 불가능</strong></td></tr>
+  <tr><td>HELO/EHLO에 뭐라고 쓰나</td><td>❌ SMTP 대화에서만 관찰 가능</td></tr>
+  <tr><td>MAIL FROM 도메인이 From과 다른가</td><td>❌ 메일을 봐야 앎</td></tr>
+  <tr><td>서명이 실제로 유효한가</td><td>❌ 서명된 메시지가 있어야 함</td></tr>
+</table>
+</div>
+<p>
+DKIM 셀렉터 문제가 특히 결정적입니다. DNS는 “이 도메인 아래에 뭐가 있는지 목록을 달라”는
+질문을 지원하지 않습니다. 셀렉터 이름을 <strong>미리 알아야만</strong> 조회할 수 있고,
+사용자에게 물어보면 대개 모릅니다. 이 모든 값이 <strong>메일 1통만 받으면 전부 자동으로
+손에 들어옵니다.</strong>
+</p>
+
+<h4>결정 (PRD v1.4)</h4>
+<blockquote>
+  <ul>
+    <li>발신 IP 수동 입력, DKIM 셀렉터 열거 불가, HELO 확인 불가 등 정적 검사의 구조적 한계가
+        <strong>실메일 수신으로 모두 해소</strong>됨</li>
+    <li>진입점이 2개면 사용자가 “무엇을 언제 써야 하는지” 혼란 — <strong>단일 흐름으로 통일</strong></li>
+    <li>도메인 입력형 정적 진단이 유용한 시나리오(구축 전 DNS 사전 검증, 타사 도메인 조회)는
+        <strong>서비스 목적 밖으로 명시적으로 제외</strong></li>
+  </ul>
+</blockquote>
+<p>
+주목할 점은 두 번째 항목입니다. 기술적으로는 두 진입점을 병행할 수 있었습니다. 그런데
+<strong>제품 관점에서 진입점 2개가 사용자를 혼란시킨다</strong>는 이유로 잘 돌아가는 기능을
+지웠습니다.
+</p>
+
+<h3>직관</h3>
+<h4>흐름이 뒤집힌다</h4>
+<p><strong>이전 (M5.5)</strong></p>
+<div class="fig">
+  <div class="flow">
+    <div class="node"><b>사용자</b></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>도메인·IP 입력 폼</b></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>GET /diagnose</b></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>엔진</b></div>
+    <div class="arrow">→</div>
+    <div class="node ok"><b>결과</b><small>동기, 즉시</small></div>
+  </div>
+</div>
+
+<p><strong>이후 (M7)</strong></p>
+<div class="fig">
+  <ol class="ladder" style="max-width:640px;margin:0 auto">
+    <li><span class="cond"><strong>①</strong> 사용자가 접속 → <code>POST /api/v1/sessions</code></span>
+        <span class="act go">check-{uuid}@mail-check… 발급</span></li>
+    <li><span class="cond"><strong>②</strong> 사용자가 자기 메일 서버에서 그 주소로 테스트 메일 발송</span>
+        <span class="act">SMTP</span></li>
+    <li><span class="cond"><strong>③</strong> Postfix 수집기가 <code>message.eml</code> + <code>meta.json</code> 적재</span>
+        <span class="act">원자적 rename</span></li>
+    <li><span class="cond"><strong>④</strong> 앱이 5초마다 수집 디렉터리 폴링 → From 도메인 추출 → 엔진 실행</span>
+        <span class="act go">세션 JSON에 결과 추가</span></li>
+    <li><span class="cond"><strong>⑤</strong> 브라우저가 4초마다 <code>GET /api/v1/sessions/{id}</code></span>
+        <span class="act go">결과 카드 표시</span></li>
+  </ol>
+  <span class="cap">동기 요청/응답이 비동기 파이프라인이 된다</span>
+</div>
+
+<h4>신뢰 등급 — 이 프로젝트에서 가장 중요한 표</h4>
+<p>
+메일이 도착하면 값이 여러 개 손에 들어오는데 <strong>전부 같은 무게가 아닙니다.</strong>
+<code>infra-work.md</code> §3.3의 이 표가 M7·M8 코드 전체를 지배합니다.
+</p>
+<div class="tablewrap">
+<table>
+  <tr><th>필드</th><th>출처</th><th>신뢰도</th><th>쓰임</th></tr>
+  <tr><td><code>client_ip</code></td><td><strong>TCP 연결에서 관찰</strong></td><td>✅ 신뢰 가능</td><td>SPF·PTR·RBL의 입력</td></tr>
+  <tr><td><code>client_hostname</code></td><td>역방향 DNS 결과</td><td>⚠️ 조건부</td><td>발신자가 자기 PTR을 통제 → 정방향 재확인 필수</td></tr>
+  <tr><td><code>helo</code></td><td>발신자가 <strong>주장</strong>한 값</td><td>🔍 검증 대상</td><td>임의 문자열. <strong>근거가 아니라 검사 항목</strong></td></tr>
+  <tr><td><code>mail_from</code></td><td>envelope 발신자</td><td>🔍 검증 대상</td><td>SPF 판정 입력. <code>From:</code>과 다를 수 있음</td></tr>
+  <tr><td><code>rcpt_to</code></td><td>우리가 수락한 수신자</td><td>✅ 신뢰 가능</td><td>토큰 추출용</td></tr>
+</table>
+</div>
+<p>
+<code>client_ip</code>만이 유일하게 <strong>위조 불가능한 관찰값</strong>입니다. TCP 3-way
+handshake를 마쳐야 SMTP 대화가 가능하므로 출발지 IP는 속일 수 없습니다. 반면
+<code>helo</code>는 발신자가 아무 문자열이나 넣을 수 있습니다 — 그래서 이 값은
+<strong>“근거”가 아니라 “검사 항목”</strong>입니다.
+</p>
+<div class="callout">
+  <span class="label">📌 원본 무손상 원칙</span>
+  <p>
+    수집기는 메일에 헤더를 추가·삭제·재작성하지 않습니다. Postfix의 <code>Received:</code>
+    한 줄만 붙습니다. 우리가 헤더를 건드리면 <strong>DKIM 서명이 깨져 오진</strong>이 나기
+    때문입니다. 서명 이후 맨 위에 붙는 헤더는 <code>h=</code> 목록에 없어 무시되므로 무해합니다.
+  </p>
+</div>
+
+<h4>결과를 파일에 쓴다</h4>
+<p>DB를 쓰지 않기로 했습니다. 세션 하나 = JSON 파일 하나입니다.</p>
+<pre>data/
+├── sessions/
+│   └── 3f2504e0-4f89-11d3-9a0c-0305e82c3301.json   ← 세션 + 이 세션의 모든 메일 결과
+└── processed.log                                    ← 처리한 디렉터리 이름 목록</pre>
+<p>발급 주소가 <code>check-{uuid}@…</code>이므로 <strong>토큰에서 파일 경로가 바로 나옵니다.</strong></p>
+<pre><code>public Optional&lt;DiagnosisSession&gt; findByLocalPart(String localPart) {
+    if (localPart == null || !localPart.toLowerCase().startsWith(TOKEN_PREFIX)) {
+        return Optional.empty();
+    }
+    return find(localPart.substring(TOKEN_PREFIX.length()));   // "check-" 떼면 UUID
+}</code></pre>
+<pre><code>mapper.writerWithDefaultPrettyPrinter().writeValue(temp.toFile(), session);
+Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);</code></pre>
+<p>
+프로세스가 쓰는 도중 죽어도 <strong>반쯤 쓰인 JSON이 남지 않습니다.</strong> 파일은 이전
+버전이거나 새 버전이지, 중간 상태가 될 수 없습니다.
+</p>
+
+<h4>판정 사다리 — 인테이크의 전부</h4>
+<div class="fig">
+  <ol class="ladder">
+    <li><span class="cond">이름이 <code>.</code>로 시작 (수집기가 아직 쓰는 중)</span><span class="act">무시</span></li>
+    <li><span class="cond">이미 처리했나</span><span class="act">무시</span></li>
+    <li><span class="cond"><code>meta.json</code> 손상 (매핑 오류)</span><span class="act stop">영구 스킵</span></li>
+    <li><span class="cond"><code>meta.json</code> 읽기 IO 오류</span><span class="act retry">기록 안 함 → 재시도</span></li>
+    <li><span class="cond">토큰이 발급 세션과 매칭 안 됨 (catch-all 스팸)</span><span class="act">진단 없이 기록</span></li>
+    <li><span class="cond">세션 TTL 만료 후 도착</span><span class="act">스킵</span></li>
+    <li><span class="cond">발신 IP가 사설망</span><span class="act stop">REJECTED_PRIVATE_IP 카드</span></li>
+    <li><span class="cond">From 헤더 추출 실패</span><span class="act stop">FAILED 카드</span></li>
+    <li><span class="cond">정상</span><span class="act go">엔진 실행 → DIAGNOSED 카드</span></li>
+  </ol>
+  <span class="cap">일시적 오류만 재시도로 남고, 나머지는 정확히 한 번 처리된다</span>
+</div>
+
+<p><strong>① 일시적 오류와 영구적 오류를 구분합니다.</strong></p>
+<pre><code>try {
+    meta = metaParser.parse(dir.resolve("meta.json"));
+} catch (MailIntakeException e) {          // 매핑 오류 = 영구
+    log.warn("meta.json이 손상되어 건너뜀: {}", dirName, e);
+    processedLog.markProcessed(dirName);   // 기록 → 다시 안 봄
+    return;
+} catch (IOException e) {                  // IO 오류 = 일시
+    log.debug("meta.json 읽기 실패 — 다음 폴에 재시도: {}", dirName, e);
+    return;                                // 기록 안 함 → 재시도
+}</code></pre>
+<p>
+손상된 JSON은 다음에 읽어도 손상돼 있습니다. 매번 재시도하면 로그만 오염됩니다. 반대로
+일시적 IO 오류를 영구 스킵하면 정상 메일 하나가 영영 진단되지 않습니다.
+</p>
+
+<p><strong>② 침묵하지 않습니다.</strong></p>
+<pre><code>// 사용자가 결과 화면에서 대기 중이므로 침묵하지 않고 실패 카드를 남긴다
+return result(meta, dirName, null, MailResultStatus.FAILED, FROM_EXTRACT_FAILED_NOTE, null);</code></pre>
+
+<p><strong>③ 절대 throw하지 않습니다.</strong></p>
+<pre><code>/** Never throws — one bad directory must not stop the poll loop. */
+public void pollOnce() { ... }</code></pre>
+<pre><code>} catch (Exception e) {
+    // pollOnce는 throw하지 않는 계약이지만, 스케줄 스레드가 죽으면 폴링이 멈추므로 이중 방어
+    log.error("인테이크 폴링 실패", e);
+}</code></pre>
+
+<h4>사설 IP — 헤어핀 NAT 문제</h4>
+<div class="fig">
+  <div class="flow">
+    <div class="node"><b>내 PC</b><small>172.30.1.50</small></div>
+    <div class="arrow">→</div>
+    <div class="node warn"><b>공유기</b><small>헤어핀 NAT<br>출발지를 사설 주소로 변환</small></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>우리 메일 서버</b><small>같은 공유기 안</small></div>
+    <div class="arrow">→</div>
+    <div class="node bad"><b>client_ip = 172.30.1.254</b><small>진짜 발신 IP가 아니다</small></div>
+  </div>
+</div>
+<p>이 IP로 SPF·PTR·RBL을 돌리면 <strong>전부 의미 없는 실패</strong>가 나옵니다. 그래서 진단을 아예 하지 않고 안내 카드를 냅니다.</p>
+<pre><code>static final String PRIVATE_IP_NOTE =
+        "이 메일은 내부망을 거쳐 도착해 발신 IP를 확인할 수 없습니다. "
+                + "진단 대상 서버와 다른 네트워크에서 다시 보내주세요.";</code></pre>
+<pre><code>/**
+ * ... Unparseable input is treated as non-public (fail-safe: better to reject
+ * than to misdiagnose).
+ */</code></pre>
+<pre><code>// Guard against hostnames and bad octets ("300.1.1.1"): InetAddress.getByName
+// would fall back to a DNS lookup for anything that is not a clean literal.</code></pre>
+<p>
+<code>InetAddress.getByName("example.com")</code>은 <strong>DNS 조회를 해버립니다.</strong>
+IP 리터럴만 받아야 하는 자리에서 이건 위험하므로 정규식으로 먼저 거릅니다.
+</p>
+
+<h4>SPF가 진짜가 된다</h4>
+<pre><code>/**
+ * The domain whose SPF policy is checked. Without a mail session this is the
+ * user-entered domain; with one it is the MAIL FROM domain, or the HELO domain
+ * for a bounce (RFC 7208 §2.4).
+ */
+private String resolveSpfDomain(CheckContext ctx, CheckResult.Builder b) {</code></pre>
+<pre>From:      help@shop.co.kr          ← DMARC·MX·전파 검사는 이 도메인
+MAIL FROM: bounce@mail.shop.co.kr   ← SPF는 이 도메인   ★</pre>
+<p>
+bounce(MAIL FROM이 빈 값)면 HELO 도메인으로 폴백하고, HELO마저 주소
+리터럴(<code>[203.0.113.5]</code>)이면 평가 도메인을 정할 수 없으므로 ERROR로 명시합니다.
+매크로도 실제 값으로 확장됩니다 — 3장에서 “세션이 없어 건너뛴다”고 표시했던
+<code>%{s}</code>·<code>%{l}</code>·<code>%{o}</code>·<code>%{h}</code>가 이제 평가됩니다.
+</p>
+
+<h3>코드 워크스루</h3>
+<h4>새 모듈: <code>checker-mail</code></h4>
+<pre>checker-core  (Spring 없음, DNS 검사 엔진)
+     ↑
+checker-mail  (Spring 없음, 메일 파이프라인)  ← 신규
+     ↑
+checker-web   (Spring Boot: 빈 조립 + 스케줄러 + REST)</pre>
+<div class="tablewrap">
+<table>
+  <tr><th>패키지</th><th>역할</th></tr>
+  <tr><td><code>meta/</code></td><td><code>MailMeta</code>(수집기 스키마 미러) + <code>MailMetaParser</code></td></tr>
+  <tr><td><code>eml/</code></td><td><code>FromHeaderExtractor</code> — mime4j로 헤더만 lenient 파싱</td></tr>
+  <tr><td><code>session/</code></td><td><code>DiagnosisSession</code>, <code>MailResult</code>, <code>FileSessionStore</code></td></tr>
+  <tr><td><code>intake/</code></td><td><code>MailIntakeService</code>, <code>ProcessedLog</code></td></tr>
+  <tr><td><code>util/</code></td><td><code>Domains</code>(정규화), <code>IpClassifier</code></td></tr>
+</table>
+</div>
+<p>
+JSON 파서는 <strong>미지 필드를 무시</strong>하도록 설정했습니다
+(<code>FAIL_ON_UNKNOWN_PROPERTIES</code> off). 수집기가 나중에 필드를 추가해도 앱이 깨지지
+않습니다 — 서로 다른 주기로 배포되는 두 컴포넌트 사이의 계약을 느슨하게 유지하는 방법입니다.
+</p>
+
+<h4>삭제된 것들</h4>
+<pre>- checker-web/.../api/DiagnoseController.java     (37줄)
+- checker-web/.../api/InputValidator.java         (96줄)
+- checker-core/.../engine/TargetIpResolver.java   (75줄)
+- 관련 테스트 3개                                  (약 380줄)</pre>
+<blockquote><p>
+<code>TargetIpResolver</code>는 M7에서 제거 — <strong>client_ip 상시 확보로 MX 폴백 사장</strong>,
+필요 시 git 이력에서 복원 <span style="font-size:12.5px">(CLAUDE.md)</span>
+</p></blockquote>
+<p>이 삭제가 3장의 PR #1을 폐기시킨 원인이기도 합니다.</p>
+
+<h4>API</h4>
+<pre>POST /api/v1/sessions        → 201 {id, address, createdAt, expiresAt, expired, mails:[]}
+GET  /api/v1/sessions/{id}   → 200 동일 스키마 / 404 {"error": "..."}</pre>
+<pre><code>/**
+ * expired means only "새 메일은 더 이상 매칭되지 않음" — 이미 쌓인 결과는 계속 조회된다.
+ */</code></pre>
+<p>
+TTL(24시간)은 <strong>수신 매칭 기준</strong>입니다. 만료 후 도착한 메일은 진단하지 않지만
+이미 쌓인 결과는 계속 볼 수 있습니다.
+</p>
+<pre><code>/** @return the canonical lowercase UUID, or null when the input is not one (path-safe gate) */
+private static String normalizeId(String id) {
+    try {
+        return UUID.fromString(id.trim().toLowerCase()).toString();
+    } catch (IllegalArgumentException e) {
+        return null;
+    }
+}</code></pre>
+<p>
+세션 ID가 파일 경로가 되므로 <code>../../etc/passwd</code> 같은 입력은 UUID 파싱에서
+걸러집니다. 블랙리스트가 아니라 <strong>형식 자체를 강제</strong>하는 방식이라 더 안전합니다.
+</p>
+
+<h4>UI: 폴링과 append-only 렌더링</h4>
+<pre><code>const renderedMails = new Set(); // queueId(또는 incomingDir) 키 — append-only 렌더링용
+
+(session.mails || []).forEach((mail, i) =&gt; {
+  const key = mail.queueId || mail.incomingDir || String(i);
+  if (renderedMails.has(key)) return; // 이미 그린 카드는 재생성하지 않음 (열림/닫힘 보존)
+  renderedMails.add(key);
+  mailsEl.insertAdjacentHTML('afterbegin', mailCard(mail, renderedMails.size));  // 최신이 위로
+});</code></pre>
+<p>
+4초마다 폴링하지만 <strong>응답 전체로 화면을 다시 그리지 않습니다.</strong> 사용자가
+아코디언을 펼쳐 읽는 중에 다시 그리면 접혀버리기 때문입니다.
+<code>?s={id}</code>로 URL을 바꿔 두어 새로고침해도 세션이 이어집니다.
+</p>
+
+<h4><code>8124129</code> — QA가 잡은 UX 결함</h4>
+<p>
+세션 복원이 실패했을 때(404 또는 네트워크 오류) <strong>주소가 비어 있는 박스만 덩그러니
+남는</strong> 상태였습니다(<code>docs/qa/issues/TC-04-018-…</code>).
+</p>
+<pre><code>function backToIssue(errHtml) {   // 세션 영역을 되돌리고 발급 화면으로 복귀</code></pre>
+<p>
+수정은 간단하지만 이런 결함은 코드 리뷰로는 잘 안 보이고 <strong>실제로 화면을 열어봐야</strong>
+보입니다. QA를 커밋 전에 하는 규칙이 값을 하는 지점입니다.
+</p>
+
+<!-- ==================== 5 ==================== -->
+<h2 id="s5"><span class="num">CHAPTER 5</span>메일 원문을 읽는 검사들 (M8) + 결과 페이지 리디자인</h2>
+<p style="color:var(--muted);font-size:14px">
+  다루는 커밋: <code>aa257ab</code>, <code>3576e75</code> · <code>c1ee3ff</code> ·
+  <code>6d904ff</code>(이 프로젝트에서 가장 큰 커밋)
+</p>
+
+<h3>배경</h3>
+<p>M8이 하는 일은 두 갈래입니다.</p>
+<ul>
+  <li><strong>① 본 범위</strong> — DKIM 서명 실검증 · DMARC alignment 실검증 · 헤더 품질 · HELO/PTR 일치</li>
+  <li><strong>② 이관</strong> — 3장에서 폐기된 PR #1의 부활 (DMARC 외부 리포트 승인 · 제네릭 PTR ·
+      MTA-STS/TLS-RPT · RBL IPv6)</li>
+</ul>
+<p>
+<code>m8-backlog.md</code>의 판정표대로 1·3·5는 원본 커밋이 <strong>클린 적용</strong>됐고,
+2는 축소 재작성, 4는 폐기됐습니다. 이틀 전에 버린 코드가 계획대로 되살아난 셈입니다.
+</p>
+
+<h3>직관</h3>
+<h4>검사를 어느 모듈에 둘 것인가</h4>
+<p>
+새 검사 4종 중 3종이 <code>message.eml</code>을 읽어야 하고, DKIM 검증에는 <strong>jDKIM</strong>이
+필요합니다. core에 jDKIM을 넣으면 “DNS만 쓰는 순수 검사 엔진”이라는 성격이 깨집니다.
+</p>
+<pre>checker-core/check/           ← DNS만 쓰는 검사 (SPF, DMARC, MX, PTR, RBL, 전파, TLS 정책)
+checker-mail/mail/check/      ← eml 원문이 필요한 검사 (DKIM, alignment, 헤더 품질)  ★ 신규</pre>
+<p>
+<code>Check</code> 인터페이스가 core에 있으므로 다른 모듈에서 구현해도 엔진은 그대로
+받아들입니다. <strong>M1의 인터페이스 설계가 사흘 뒤에 배당금을 지급</strong>하는 순간입니다 —
+엔진 코드는 한 줄도 바뀌지 않았습니다.
+</p>
+<pre><code>/**
+ * @param emlPath byte-exact original of the received mail (message.eml); null when
+ *                no mail is available — checks needing the raw message (DKIM,
+ *                header quality, DMARC alignment) SKIP then
+ */</code></pre>
+<pre><code>if (!ctx.hasEml()) {
+    return b.status(CheckStatus.SKIP)
+            .evidence("메일 원문(message.eml)이 있어야 검사할 수 있음 — 실메일 수신 시 자동 수행")
+            .build();
+}</code></pre>
+
+<h4>① DKIM — 두 겹의 검사</h4>
+<div class="fig">
+  <div class="flow" style="flex-direction:column;gap:12px">
+    <div class="node" style="min-width:340px;text-align:left">
+      <b>서명 검증</b>
+      <small><code>DKIM-Signature</code> 헤더를 읽고 <code>d=</code>/<code>s=</code>로 공개키를
+      조회해 서명을 실제로 검증 → “이 메일이 서명 이후 변조되지 않았나”</small>
+    </div>
+    <div class="node warn" style="min-width:340px;text-align:left">
+      <b>키 레코드 린트</b>
+      <small>
+        검증이 통과해도 키 자체에 문제가 있을 수 있음<br>
+        · RSA 1024 미만 → <span class="badge b-fail">FAIL</span> (위조 가능)<br>
+        · RSA 2048 미만 → <span class="badge b-warn">WARN</span><br>
+        · <code>p=</code> 빈 값 → <span class="badge b-fail">FAIL</span> (폐기된 키)<br>
+        · <code>t=y</code> → <span class="badge b-warn">WARN</span> (테스트 모드)
+      </small>
+    </div>
+  </div>
+</div>
+<p>
+<strong><code>p=</code> 빈 값</strong>이 재미있는 케이스입니다. RFC 6376 §3.6.1에서 빈
+<code>p=</code>는 “이 키는 폐기됨(revoked)”을 뜻합니다. 폐기된 키로 계속 서명하고 있으면
+겉으로는 정상인데 수신 서버는 그 서명을 무효로 봅니다.
+</p>
+<p>
+그리고 <strong>셀렉터 문제가 여기서 풀립니다.</strong> 4장에서 “DNS로 셀렉터를 열거할 수
+없다”고 했었죠. 메일이 있으면 <code>DKIM-Signature</code> 헤더에 <code>s=selector1</code>이
+적혀 있습니다.
+</p>
+<div class="callout">
+  <span class="label">📌 규칙은 새 라이브러리에도 적용된다</span>
+  <p>
+    jDKIM은 공개키를 DNS에서 조회해야 합니다. 그냥 쓰면 라이브러리가 직접 네트워크를 칩니다.
+    그래서 jDKIM의 <code>PublicKeyRecordRetriever</code> 인터페이스를 직접 구현해 조회를
+    <code>DnsQueryService</code>로 되돌립니다.
+  </p>
+  <pre><code>public class DnsQueryServiceKeyRetriever implements PublicKeyRecordRetriever {
+    public List&lt;String&gt; getRecords(CharSequence methodAndOption, CharSequence selector,
+                                   CharSequence token) {
+        DnsAnswer ans = dns.query(selector + "._domainkey." + token, RecordType.TXT);
+        ...
+    }
+}</code></pre>
+  <p>사흘 전에 세운 규칙을 새 의존성 앞에서 굽히지 않은 것입니다.</p>
+</div>
+
+<h4>② DMARC alignment — “레코드가 있다”와 “실제로 통과한다”는 다르다</h4>
+<div class="fig">
+  <div class="flow">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="node"><b>SPF 다리</b><small>MAIL FROM 도메인으로<br>check_host 재평가 → pass?</small></div>
+      <div class="node"><b>+ aspf 정렬</b><small>From 과 같은 조직?</small></div>
+    </div>
+    <div class="arrow">또는</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="node"><b>DKIM 다리</b><small>서명 검증 → 통과한 d= 있나?</small></div>
+      <div class="node"><b>+ adkim 정렬</b><small>From 과 같은 조직?</small></div>
+    </div>
+    <div class="arrow">→</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="node ok"><b>pass</b><small>한 다리만 성립해도 OK</small></div>
+      <div class="node bad"><b>fail</b><small>둘 다 실패</small></div>
+    </div>
+  </div>
+  <span class="cap">DMARC = (인증 통과 <em>그리고</em> 정렬) 이 한 다리에서 성립</span>
+</div>
+<pre><code>boolean spfLeg = spfPass &amp;&amp; spfAligned;
+if (spfLeg || dkimLeg) {
+    b.evidence("DMARC 판정: pass — ... alignment 충족 (둘 중 하나면 통과)");
+}</code></pre>
+<div class="tablewrap">
+<table>
+  <tr><th>모드</th><th>From <code>shop.co.kr</code> 과 MAIL FROM <code>mail.shop.co.kr</code></th></tr>
+  <tr><td><code>aspf=r</code> (relaxed, 기본값)</td><td>✅ 조직 도메인이 같으므로 정렬</td></tr>
+  <tr><td><code>aspf=s</code> (strict)</td><td>❌ 정확히 같아야 함</td></tr>
+</table>
+</div>
+<pre><code>private boolean aligned(String candidate, String fromDomain, String mode) {
+    if (candidate.equalsIgnoreCase(fromDomain)) return true;
+    if ("s".equals(mode)) return false;
+    return orgResolver.organizationalDomain(candidate)
+            .equalsIgnoreCase(orgResolver.organizationalDomain(fromDomain));
+}</code></pre>
+<p>M3의 <code>OrgDomainResolver</code>(Guava PSL)가 여기서 다시 쓰입니다.</p>
+<p>가이드가 <strong>실패 조합별로 다른 것</strong>도 눈여겨볼 만합니다.</p>
+<pre><code>if (spfPass &amp;&amp; !spfAligned) {
+    b.guidance("SPF는 통과했지만 MAIL FROM 도메인이 From 도메인과 정렬되지 않았습니다 — "
+             + "봉투 발신 주소(envelope from)를 From과 같은 도메인으로 맞추세요");
+}
+if (!o.passedDomains().isEmpty() &amp;&amp; !dkimLeg) {
+    b.guidance("DKIM은 통과했지만 서명 도메인(d=)이 From 도메인과 정렬되지 않았습니다 — ...");
+}
+if (!spfPass &amp;&amp; o.passedDomains().isEmpty()) {
+    b.guidance("SPF와 DKIM 검사부터 통과시켜야 ... 두 검사 카드의 가이드를 먼저 적용하세요");
+}</code></pre>
+<p>
+“SPF는 통과했는데 정렬이 안 됨”과 “SPF 자체가 실패”는 고치는 방법이 완전히 다릅니다.
+전자는 봉투 주소를 바꾸는 일, 후자는 SPF 레코드를 고치는 일입니다.
+</p>
+
+<h4>③ 헤더 품질 — 무엇을 검사하지 <em>않을</em> 것인가</h4>
+<pre><code>/**
+ * Header quality per the mail-tester benchmark (PRD §4): missing To /
+ * Message-ID / Date and header syntax slips are the main real-world point
+ * losses, and a correctly configured MTA/submission chain adds these headers
+ * automatically — absence signals a server misconfiguration, not content taste.
+ * Content-quality headers (List-Unsubscribe 등) are out of scope by design.
+ */</code></pre>
+<p>기준선은 <strong>“정상 설정된 서버라면 자동으로 붙는가”</strong>입니다.</p>
+<ul>
+  <li><code>Message-ID</code>, <code>Date</code> — 제대로 된 submission 경로를 지나면 MTA가
+      붙여줍니다. 없다는 것은 <strong>서버 설정 문제</strong>의 신호 →
+      <span class="badge b-fail">FAIL</span></li>
+  <li><code>To:</code> 누락 — 스팸 필터가 감점하지만 Bcc 단독 발송이라는 정당한 경우가 있음 →
+      <span class="badge b-warn">WARN</span></li>
+  <li><code>List-Unsubscribe</code> — <strong>콘텐츠 취향</strong>이지 서버 설정이 아님 → 아예 검사 안 함</li>
+</ul>
+<p>
+이 프로젝트가 “메일 서버 설정 진단 도구”이지 “뉴스레터 품질 검사기”가 아니라는 포지셔닝이
+코드 수준에서 지켜지고 있습니다. 같은 이유로 PRD는 <strong>종합 점수(N/10)</strong> 산출도
+비목표로 명시합니다 — 항목 간 가중치에 근거가 없기 때문입니다.
+</p>
+<pre><code>if ((line.charAt(0) == ' ' || line.charAt(0) == '\t') &amp;&amp; current != null) {
+    current.append(' ').append(line.trim());   // folding 해제
+    continue;
+}</code></pre>
+<p>
+라이브러리로 파싱하면 <strong>관대한 파서가 잘못된 헤더를 고쳐서</strong> 읽어버립니다.
+<code>Subject:없는공백</code> 같은 형식 오류를 잡는 게 목적인데 파서가 정규화하면 검사할
+대상이 사라집니다. 인코딩이 <code>ISO_8859_1</code>인 것도 의도적입니다 — 바이트를 그대로
+문자로 매핑해 깨진 인코딩에서도 파싱이 실패하지 않게 합니다.
+</p>
+
+<h4>④ HELO/PTR 일치 — “주장”을 “관찰”과 대조</h4>
+<div class="fig">
+  <div class="flow">
+    <div class="node warn"><b>발신자 주장</b><small>EHLO mail.example.com</small></div>
+    <div class="arrow">vs</div>
+    <div class="node"><b>관찰된 사실</b><small>203.0.113.5 → PTR →<br>smtp01.hosting.net</small></div>
+    <div class="arrow">→</div>
+    <div class="node bad"><b>불일치</b><small><span class="badge b-warn">WARN</span></small></div>
+  </div>
+</div>
+<pre><code>if (helo.startsWith("[")) {
+    b.atLeast(CheckStatus.WARN)
+            .evidence("HELO가 주소 리터럴(" + helo + ") — 다수 수신 서버가 스팸 신호로 취급")
+            .guidance("발신 서버의 HELO/EHLO 명을 PTR과 일치하는 FQDN으로 설정하세요");</code></pre>
+
+<h4>⑤ 제네릭 PTR — 토큰 단위로 매칭하는 이유</h4>
+<pre>mail.example.com                        ✅ 전용 호스트명
+203-0-113-5.dynamic.isp.net             ⚠️ 제네릭 (dynamic 토큰 + IP 옥텟)
+5.113.0.203.static.broadband.kr         ⚠️ 제네릭 (IP 옥텟 역순)</pre>
+<pre><code>List&lt;String&gt; tokens = Arrays.stream(host.toLowerCase().split("[.\\-_]"))
+        .map(t -&gt; t.replaceFirst("^0+(?=.)", ""))   // "090" → "90" 제로 패딩 무시
+        .toList();
+if (tokens.stream().anyMatch(GENERIC_TOKENS::contains)) return true;</code></pre>
+<p>
+<code>contains("dsl")</code> 같은 <strong>부분 문자열 매칭을 쓰지 않습니다.</strong> 그러면
+<code>mail.dslr-shop.com</code> 같은 정상 호스트명이 걸립니다. IP 옥텟 포함 검사도 정순/역순
+4연속 윈도우로 봅니다.
+</p>
+
+<h4>⑥ MTA-STS — HTTP를 인터페이스 뒤로</h4>
+<pre>① _mta-sts.example.com  TXT   →  "v=STSv1; id=20260728T01"
+② https://mta-sts.example.com/.well-known/mta-sts.txt  GET   ← HTTP!
+③ 정책 파일의 mx 목록 vs 실제 MX 레코드 대조</pre>
+<p>
+단위 테스트에서 네트워크를 금지한다는 원칙이 걸립니다. 그래서 <code>PolicyFetcher</code>
+인터페이스로 한 겹 감쌉니다 — <code>DnsQueryService</code>와 정확히 같은 패턴입니다.
+</p>
+<pre><code>public TlsPolicyCheck(DnsQueryService dns, PolicyFetcher fetcher)</code></pre>
+<p>
+실제 구현(<code>HttpPolicyFetcher</code>)에는 <strong>리다이렉트 금지</strong>(RFC 8461 요구),
+타임아웃, 64KB 상한이 붙어 있습니다.
+</p>
+<pre><code>boolean enforce = mode.equals("enforce");
+b.atLeast(enforce ? CheckStatus.FAIL : CheckStatus.WARN)
+        .evidence("정책 mx 목록과 불일치하는 MX: " + String.join(", ", unmatched)
+                + (enforce ? " — enforce 모드에서 발신자가 이 MX로의 배송을 거부함" : ""));</code></pre>
+<p>
+<code>enforce</code>인데 정책 mx 목록에 없는 MX가 있으면 발신자가 <strong>그 서버로의 배송을
+거부합니다</strong> — 메일이 실제로 안 옵니다. 그래서 FAIL입니다. 와일드카드 매칭도 RFC대로
+<strong>정확히 한 레이블만</strong> 매칭합니다.
+</p>
+<pre><code>String label = h.substring(0, h.length() - suffix.length());
+return !label.isEmpty() &amp;&amp; !label.contains(".");   // a.example.com ✅ / a.b.example.com ❌</code></pre>
+
+<h3>코드 워크스루</h3>
+<h4>테스트를 어떻게 했나 — 진짜 서명을 만든다</h4>
+<p>
+DKIM 검증을 테스트하려면 유효한 서명이 붙은 메일이 필요한데, 실제 메일을 복사해 넣을 수는
+없습니다(공개 저장소이고, PRD가 실측 샘플 복사를 금지합니다). 해법은 <strong>테스트 안에서
+키를 생성하고 직접 서명하는 것</strong>입니다.
+</p>
+<div class="fig">
+  <div class="flow">
+    <div class="node"><b>RSA 키쌍 생성</b><small>1024 / 2048 선택</small></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>DKIMSigner</b><small>BASE_EML에 진짜 서명</small></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>DNS mock</b><small>selector._domainkey…<br>공개키 반환</small></div>
+    <div class="arrow">→</div>
+    <div class="node ok"><b>DkimCheck 실행</b><small>네트워크 0회</small></div>
+  </div>
+</div>
+<pre><code>/** Builds (optionally DKIM-signed) message.eml fixtures for the mail-based checks. */
+public final class EmlFixtures {
+    public static final String BASE_EML = "From: Sender &lt;user@example.com&gt;\r\n" + ...;
+    public static KeyPair rsaKeyPair(int bits) { ... }
+}</code></pre>
+
+<h4>두 검사가 같은 검증을 공유하되 격리를 유지</h4>
+<pre><code>/**
+ * Runs jDKIM verification over message.eml and normalizes the outcome so both
+ * the DKIM check and the DMARC alignment check share one verification pass
+ * shape (each check still verifies independently — checks stay isolated).
+ */
+public class DkimVerificationSupport {</code></pre>
+<p>
+공유하는 것은 <strong>코드</strong>(형태)이지 <strong>결과</strong>(상태)가 아닙니다. 각 검사가
+각자 검증을 한 번씩 돌립니다. 조금 낭비지만, 검사가 병렬 실행되고 서로를 모른다는 성질이
+유지됩니다.
+</p>
+<pre><code>// jDKIM accumulates results per instance — use a fresh verifier per run.
+DKIMVerifier verifier = new DKIMVerifier(new DnsQueryServiceKeyRetriever(dns));</code></pre>
+<p>
+<code>DKIMVerifier</code>를 재사용하면 이전 실행 결과가 누적됩니다. 병렬 실행되는 검사에서
+싱글턴으로 뒀다면 서로 다른 메일의 결과가 섞였을 겁니다.
+</p>
+
+<h4>결과 페이지 리디자인 (<code>c1ee3ff</code>)</h4>
+<div class="fig">
+  <div class="mock">
+    <div class="bar">① 주소 발급 ✓ ── ② 메일 발송 ✓ ── ③ 진단 결과 ●</div>
+    <div class="row" style="background:var(--code-bg)">
+      <span class="t"><strong>shop.co.kr</strong></span>
+      <span class="badge b-fail">문제 2건</span>
+      <span class="peek">#1</span>
+    </div>
+    <div class="row"><span class="badge b-fail">FAIL</span><span class="t">DKIM</span><span class="peek">DKIM-Signature 헤더가 없음</span></div>
+    <div class="row"><span class="badge b-fail">FAIL</span><span class="t">DMARC Alignment</span><span class="peek">SPF·DKIM 어느 쪽도…</span></div>
+    <div class="row"><span class="badge b-warn">WARN</span><span class="t">TLS 정책 (MTA-STS / TLS-RPT)</span><span class="peek">MTA-STS 미설정</span></div>
+    <div class="row"><span class="badge b-pass">PASS</span><span class="t">SPF</span><span class="peek">▶</span></div>
+    <div class="row"><span class="badge b-pass">PASS</span><span class="t">PTR / FCrDNS</span><span class="peek">▶</span></div>
+  </div>
+  <span class="cap">스테퍼 · 종합 판정 배지 · 문제 항목 우선 정렬</span>
+</div>
+<pre><code>function verdictBadge(report) {
+  const bad = c.FAIL + c.ERROR;
+  if (bad) return '&lt;span class="verdict bad"&gt;문제 ' + bad + '건&lt;/span&gt;';
+  if (c.WARN) return '&lt;span class="verdict warn"&gt;주의 ' + c.WARN + '건&lt;/span&gt;';
+  return '&lt;span class="verdict ok"&gt;모두 통과&lt;/span&gt;';
+}</code></pre>
+<p>
+주의할 점은 이게 <strong>점수가 아니라 개수</strong>라는 것입니다. PRD가 종합 점수(N/10)를
+비목표로 명시했기 때문입니다.
+</p>
+<pre><code>// 문제(FAIL·ERROR·WARN) 항목이 위로 오도록 정렬 — 같은 상태끼리는 원래 순서 유지
+const sorted = report.results
+  .map((r, i) =&gt; [r, i])
+  .sort((a, b) =&gt; (STATUS_ORDER.indexOf(a[0].status) - STATUS_ORDER.indexOf(b[0].status))
+                  || (a[1] - b[1]));</code></pre>
+<p>
+<code>|| (a[1] - b[1])</code>가 <strong>안정 정렬</strong>을 보장합니다. 같은 상태끼리는 원래
+순서를 유지해서 폴링할 때마다 카드 순서가 흔들리지 않습니다. 디자인 톤은 사용자 선호에 맞춰
+장식 요소를 배제한 “흰 카드 + 1px 보더” 수준으로 확정됐고, 다크모드도 지원합니다.
+</p>
+
+<h4>QA — 인프라 없이 파이프라인 검증하기</h4>
+<pre>픽스처 A(IPv4): client_ip 8.8.8.8, helo dns.google (PTR과 일치), DKIM 서명 없음
+픽스처 B(IPv6): client_ip 2001:4860:4860::8888, Message-ID 없는 eml (헤더 FAIL 유도)
+픽스처 C: B와 같은 IP + 정상 헤더 (이슈 수정 후 재검증용)</pre>
+<p>
+수집 디렉터리에 픽스처를 손으로 넣어 인테이크를 구동했습니다. 10케이스 전부 Pass인데
+<strong>QA 도중 결함이 하나 발견</strong>됐습니다.
+</p>
+<blockquote><p>
+TC-01-007 수행 중 <strong>PTR IPv6 오탐 결함 발견 → 이슈 기록·수정</strong><br>
+IPv6 FCrDNS 왕복 비교가 문자열 비교라 압축/완전 표기 차이로 오탐 FAIL →
+<code>PtrCheck</code>에 RFC 5952 정규형 비교 도입, 단위 테스트 추가
+</p></blockquote>
+<p>
+2장에서 언급한 그 버그입니다. 단위 테스트로는 안 잡혔습니다 — 테스트가 쓰는 IPv6 문자열과
+실제 DNS가 돌려주는 문자열의 표기가 우연히 같았기 때문이죠.
+<strong>실제 네트워크로 실제 화면을 돌려봐야</strong> 나오는 종류의 버그입니다.
+</p>
+<blockquote><p>
+카드 #3 PTR 통과. 기존 카드 #2는 <strong>수정 전 결과 그대로 보존</strong>(append-only)
+</p></blockquote>
+<p>append-only 카드 구조 덕분에 수정 전후를 한 화면에서 비교할 수 있었습니다.</p>
+
+<!-- ==================== 6 ==================== -->
+<h2 id="s6"><span class="num">CHAPTER 6</span>퀴즈 20문항</h2>
+<p>
+선택지를 클릭하면 정답 여부와 해설이 나옵니다. 난이도는
+<strong>“내용을 이해했으면 풀리지만, 대충 읽었으면 틀리는”</strong> 수준을 노렸습니다.
+</p>
+
+<div class="quizwrap">
+  <div class="quiz" id="quiz"></div>
+  <div class="score" id="score">아직 푼 문제가 없습니다</div>
+</div>
+
+<!-- ==================== 7 ==================== -->
+<h2 id="s7"><span class="num">EPILOGUE</span>남은 이야기</h2>
+
+<h3>이 저장소에 남아 있는 것</h3>
+<p><code>mail-health-check-prd.md</code> §9와 CLAUDE.md 운영 노트 기준입니다.</p>
+<h4>M6 잔여</h4>
+<ul>
+  <li><strong>unbound 재귀 리졸버 설치</strong> — 비-Spamhaus 존(Barracuda·SpamCop·PSBL·
+      Mailspike·Hostkarma)은 공개 리졸버 경유 조회가 막혀 있어 자체 재귀 리졸버가 필요합니다
+      (포워딩 모드는 안 됨)</li>
+  <li><strong>RCPT 시점 토큰 검증</strong> — 지금은 catch-all이라 아무 주소로나 메일이 들어오고,
+      인테이크가 “토큰 미매칭”으로 스킵합니다. Postfix policy service로 SMTP 단계에서 거부하는
+      것이 남아 있습니다</li>
+  <li>세션 파일·수집 디렉터리 <strong>정리 정책 미정</strong>(보관 기간·삭제 주체)</li>
+  <li>주소 발급 <strong>rate limit 없음</strong> — 알려진 잔여</li>
+</ul>
+<h4>M9</h4>
+<ul><li>서버 배포 + 사내 공유, 실사용 지표 수집</li></ul>
+
+<h3>설계 관점에서 눈여겨볼 지점</h3>
+<p>
+M1에서 만든 <code>Check</code> 인터페이스는 12개 검사, 3개 모듈, 한 번의 완전한 진입점 교체를
+겪고도 바뀌지 않았습니다. <code>DnsQueryService</code>도 마찬가지입니다 — jDKIM이라는 외부
+라이브러리를 끌어들일 때조차 규칙이 라이브러리에 맞춰진 게 아니라 라이브러리가 규칙에
+맞춰졌습니다.
+</p>
+<p>
+반대로 <strong>잘 돌아가던 코드가 지워진 사건</strong>도 두 번 있었습니다. M7이 입력 폼과
+API를 지웠고, 그 여파로 PR #1 5건이 폐기됐습니다. 두 경우 모두 코드는 버렸지만
+<strong>결정 근거는 문서로 남겼습니다</strong>(<code>m7-plan.md</code>,
+<code>m8-backlog.md</code>). 그래서 이틀 뒤 그중 3건이 원본 커밋 그대로 되살아날 수 있었습니다.
+</p>
+<p>
+바뀌지 않아야 할 것과 바뀌어야 할 것을 구분하는 일 — 이 저장소의 나흘치 커밋이 계속 보여주는
+것이 그것입니다.
+</p>
+
+<footer>
+  <p>
+    참고 문서: <code>mail-health-check-prd.md</code> (PRD v1.6) ·
+    <code>infra-work.md</code> (수신 인프라 계약) · <code>m7-plan.md</code> ·
+    <code>m8-backlog.md</code> · <code>docs/qa/</code>
+  </p>
+</footer>
+
+</div><!-- /wrap -->
+
+<script>
+const QUESTIONS = [
+  {
+    g: "A. 설계 기반 (1장)",
+    q: "<code>CheckResult.Builder</code>의 <code>atLeast()</code>가 하는 일은?",
+    o: ["상태를 지정된 값으로 무조건 설정한다",
+        "현재 상태보다 심각할 때만 상태를 올린다",
+        "최소 하나의 evidence가 있는지 검증한다",
+        "검사 실행 시간의 하한을 설정한다"],
+    a: 1,
+    e: "<code>CheckStatus</code>는 <code>PASS(0) &lt; SKIP(1) &lt; WARN(2) &lt; ERROR(3) &lt; FAIL(4)</code> 순으로 심각도 값을 갖고, <code>atLeast()</code>는 <code>isWorseThan()</code>으로 비교해 더 심각할 때만 덮어씁니다.<br><br>하나의 검사가 여러 문제를 발견하기 때문에 필요합니다. 구문 경고(WARN)를 먼저 발견하고 lookup 한도 초과(FAIL)를 나중에 발견해도, 순서가 반대여도 최종 상태는 FAIL이 됩니다. 무조건 덮어쓰는 <code>status()</code>는 “여기서 판정 확정, 즉시 return”하는 자리에서만 씁니다."
+  },
+  {
+    q: "엔진이 검사를 병렬로 돌릴 수 있는 근거는?",
+    o: ["모든 검사가 <code>synchronized</code>로 보호돼 있어서",
+        "<code>Check</code> 구현체가 stateless·thread-safe이며 같은 <code>CheckContext</code>를 읽기만 하기 때문",
+        "각 검사가 별도 <code>DnsQueryService</code> 인스턴스를 갖기 때문",
+        "<code>CompletableFuture</code>가 자동으로 동기화하기 때문"],
+    a: 1,
+    e: "<code>Check</code> 인터페이스 주석에 명시된 계약입니다 — “Implementations must be stateless and thread-safe: the engine runs all checks concurrently against the same context.”<br><br><code>CheckContext</code>는 record이고 <code>targetIps</code>는 생성자에서 <code>List.copyOf()</code>로 불변화됩니다. 읽기만 하는 불변 입력을 여러 스레드가 공유하는 것은 안전합니다. 이 계약 덕분에 M8에서 새 검사 4종이 추가돼도 엔진은 손댈 필요가 없었습니다."
+  },
+  {
+    q: "<code>DnsAnswer.failed()</code>와 <code>!hasRecords()</code>를 구분하지 않으면 RBL 검사에서 어떤 일이 생기나?",
+    o: ["정상 IP를 등재로 오판한다",
+        "DNS 타임아웃 상태에서 모든 IP를 “미등재(깨끗함)”로 보고한다",
+        "조회가 무한 반복된다",
+        "IPv6 주소만 잘못 처리된다"],
+    a: 1,
+    e: "RBL은 “응답이 오면 등재, 안 오면 미등재”입니다. 조회 실패를 “레코드 없음”으로 처리하면 <strong>네트워크가 끊긴 상태에서 모든 IP가 깨끗하다는 보고</strong>가 나갑니다.<br><br>그래서 <code>RblCheck</code>는 조회 오류를 <code>RblVerdict.error()</code>로 만들어 WARN을 올리고 “확인 불가”라고 표시합니다."
+  },
+  {
+    q: "<code>CheckEngine</code>이 <code>completeOnTimeout()</code>을 쓰는 이유로 가장 정확한 것은?",
+    o: ["타임아웃된 검사 스레드를 강제 종료하기 위해",
+        "타임아웃을 예외가 아닌 결과값으로 만들어, 나머지 검사 결과를 정상 표시하기 위해",
+        "검사별 타임아웃을 다르게 주기 위해",
+        "메모리 사용량을 줄이기 위해"],
+    a: 1,
+    e: "<code>completeOnTimeout(timeoutResult(check), ...)</code>은 시간이 지나면 미리 만들어둔 ERROR <code>CheckResult</code>로 future를 완료시킵니다. 그래서 호출부는 예외 처리 없이 <code>join()</code> 한 줄로 끝나고, 느린 검사 하나가 전체 진단을 실패시키지 않습니다.<br><br>첫 번째 선택지는 오답입니다 — 타임아웃된 스레드는 계속 돌고 결과만 버려집니다. 검사가 부작용 없는 순수 함수라는 계약 덕분에 이게 안전합니다."
+  },
+  {
+    g: "B. DNS 검사 (2장)",
+    q: "SPF의 10-lookup 한도를 초과하면 수신 서버는 어떻게 처리하나?",
+    o: ["초과분 메커니즘만 무시하고 나머지로 평가한다",
+        "softfail로 처리한다",
+        "permerror — SPF 평가 자체를 무효 처리한다",
+        "경고 로그만 남기고 pass 처리한다"],
+    a: 2,
+    e: "RFC 7208은 한도 초과를 <strong>permerror</strong>로 규정합니다. SPF 결과가 pass도 fail도 아닌 “평가 불가”가 되죠.<br><br>실무적으로 위험한 이유는 DMARC와의 조합입니다. <code>p=reject</code>인데 SPF가 permerror이고 DKIM도 없으면 <strong>정상 메일이 전부 거부</strong>됩니다. 그런데 레코드는 문법적으로 완벽해 보여서 눈으로는 못 찾습니다."
+  },
+  {
+    q: "<code>_dmarc.mail.shop.co.kr</code>에 레코드가 없을 때 수신 서버가 다음으로 조회하는 것은?",
+    o: ["<code>_dmarc.co.kr</code>",
+        "<code>_dmarc.shop.co.kr</code> (조직 도메인)",
+        "<code>_dmarc.kr</code>",
+        "더 조회하지 않고 DMARC 없음으로 처리"],
+    a: 1,
+    e: "RFC 7489 §6.6.3의 조직 도메인 폴백입니다. 이때 적용되는 정책은 <code>p=</code>가 아니라 <strong><code>sp=</code>(서브도메인 정책)</strong>입니다.<br><br><code>co.kr</code>을 고르면 안 되는 이유는 그게 <strong>공용 접미사(public suffix)</strong>이기 때문입니다. 조직 도메인 계산은 “마지막 두 레이블” 규칙으로는 불가능하고 Public Suffix List를 봐야 합니다."
+  },
+  {
+    q: "Spamhaus가 <code>127.255.255.254</code>를 응답했다. 올바른 처리는?",
+    o: ["미등재로 처리 (127.0.0.x가 아니므로)",
+        "등재로 처리 (응답이 왔으므로)",
+        "조회 오류로 처리하고 “미등재로 판단하면 안 됨”을 표시",
+        "다른 리졸버로 재시도 후 결과 채택"],
+    a: 2,
+    e: "<code>127.255.255.x</code>는 <strong>쿼리가 거부됐다</strong>는 뜻입니다(공개 리졸버 경유, 잘못된 키, 조회량 초과). 등재 여부에 대한 정보가 전혀 없는 상태죠.<br><br>미등재로 처리하면 실제로 블랙리스트에 올라 메일이 반송되고 있는 서버에게 “깨끗함”이라고 말하게 됩니다. PRD가 이 항목을 핵심 제약으로 못 박은 이유입니다."
+  },
+  {
+    q: "DNS 전파 검사가 “권한 네임서버에 직접 조회한 값”을 기준으로 삼는 이유는?",
+    o: ["응답이 가장 빠르기 때문",
+        "캐시를 거치지 않은 진실이라, 공개 리졸버들이 모두 똑같이 낡은 값을 주는 경우를 잡아내기 위해",
+        "TTL 정보를 권한 NS만 제공하기 때문",
+        "공개 리졸버는 TXT 레코드를 반환하지 않기 때문"],
+    a: 1,
+    e: "기준값 없이 공개 리졸버끼리만 비교하면 <strong>전부 똑같이 캐시된 옛날 값</strong>인 경우를 “일치 = 정상”으로 오판합니다.<br><br>권한 NS와 비교하면 불일치가 곧 “아직 전파 중”이라는 의미가 되고, 남은 TTL을 함께 보여주면 사용자는 얼마나 기다리면 되는지 알 수 있습니다."
+  },
+  {
+    q: "Hostkarma의 <code>127.0.0.1</code> 응답의 의미는?",
+    o: ["블랙리스트 등재", "화이트리스트 (긍정 평판)", "조회 오류", "브라운리스트"],
+    a: 1,
+    e: "Hostkarma는 순수 블랙리스트가 아니라 <strong>평판 서비스</strong>입니다. white(1) / yellow(3) / NOBL(5)은 긍정 또는 중립이고, black(2) / brown(4)만 부정적 등재입니다.<br><br>“127.0.0.x면 등재”라는 공통 로직으로 짰다면 화이트리스트 등재를 블랙리스트 등재로 정반대 보고했을 겁니다. 그래서 M1부터 <code>RblProvider.interpret()</code>가 존별로 구현됩니다."
+  },
+  {
+    g: "C. 커버리지 확대와 폐기된 PR (3장)",
+    q: "<code>CheckContext.ipsUserProvided</code> 플래그가 필요한 이유는?",
+    o: ["사용자 입력을 로그에 남기기 위해",
+        "MX에서 도출한 IP는 수신 서버 주소라, SPF check_host로 평가하면 정상 설정이 FAIL로 나오기 때문",
+        "다중 IP 개수 상한을 적용하기 위해",
+        "RBL 조회 쿼터를 관리하기 위해"],
+    a: 1,
+    e: "MX가 가리키는 IP는 메일을 <strong>받는</strong> 서버이고, SPF가 허용하는 IP는 <strong>보내는</strong> 서버입니다. 많은 조직이 수신은 게이트웨이로, 발신은 별도 서버나 SendGrid로 처리하므로 둘은 대개 다릅니다.<br><br>MX IP로 평가하면 <strong>정상 설정을 오류로 보고</strong>하게 됩니다. (M7 이후에는 SMTP 세션의 접속 IP가 진짜 발신 IP이므로 인테이크가 이 값을 <code>true</code>로 줍니다.)"
+  },
+  {
+    q: "PR #1의 5개 커밋 중 “그대로 이식”된 3건의 공통점은?",
+    o: ["테스트 커버리지가 높았다",
+        "도메인 이름만 입력으로 필요해, 진입점이 바뀌어도 의존이 깨지지 않았다",
+        "코드 양이 적었다",
+        "같은 파일을 수정했다"],
+    a: 1,
+    e: "DMARC 외부 리포트 승인, 제네릭 PTR 경고, MTA-STS/TLS-RPT — 셋 다 도메인만 있으면 됩니다. M7이 삭제한 것은 <code>InputValidator</code>와 <code>TargetIpResolver</code>인데, 이 3건은 그 둘에 의존하지 않았습니다.<br><br>반면 IPv6 지원은 <code>TargetIpResolver</code>에서 AAAA를 수집하는 부분이 절반이라 축소 재작성됐고, 사설 IP <strong>입력 검증</strong>은 입력 폼 자체가 사라져 존재 이유가 없어졌습니다. 판정 기준은 코드 양이 아니라 <strong>의존하는 입력이 무엇인가</strong>였습니다."
+  },
+  {
+    q: "다중 IP 검사에서 evidence에 <code>[ip]</code> 태그를 “다중일 때만” 붙이는 이유는?",
+    o: ["문자열 길이 제한 때문에",
+        "단일 IP가 대부분의 경우인데, 매 줄에 같은 IP가 반복되면 정작 중요한 내용을 가리기 때문",
+        "단일 IP에서는 IP를 알 수 없기 때문",
+        "UI가 태그를 파싱하지 못하기 때문"],
+    a: 1,
+    e: "실제 사용의 대부분은 발신 서버 1대입니다. 모든 줄 앞에 <code>[203.0.113.5]</code>가 붙으면 같은 정보가 10번 반복되면서 판정 내용을 가립니다. 단일 IP일 때 그 정보는 이미 카드 상단의 “검사 대상 IP” 줄에 있습니다.<br><br>같은 맥락에서 guidance도 IP별이 아니라 <strong>실패 유형별 1회</strong>만 냅니다."
+  },
+  {
+    g: "D. 실메일 전환 (4장)",
+    q: "<code>meta.json</code>의 필드 중 유일하게 “위조 불가능한 관찰값”인 것은?",
+    o: ["<code>helo</code>", "<code>mail_from</code>", "<code>client_ip</code>", "<code>client_hostname</code>"],
+    a: 2,
+    e: "<code>client_ip</code>는 TCP 연결에서 관찰됩니다. SMTP 대화를 하려면 3-way handshake가 완료돼야 하고, 그러려면 응답을 받을 수 있는 진짜 주소여야 합니다.<br><br>· <code>helo</code>는 발신자가 SMTP 명령으로 <strong>선언한 임의 문자열</strong> — 검증 대상<br>· <code>mail_from</code>도 발신자가 선언한 값 — SPF 판정의 입력이자 검증 대상<br>· <code>client_hostname</code>은 역방향 DNS 결과인데 <strong>발신자가 자기 PTR을 통제</strong>하므로 조건부. 반드시 정방향 재확인(FCrDNS)을 거칩니다"
+  },
+  {
+    q: "<code>MailIntakeService</code>가 <code>meta.json</code> 파싱 실패를 두 갈래로 나눠 처리하는 이유는?",
+    o: ["로그 레벨을 다르게 하려고",
+        "매핑 오류는 재시도해도 같은 결과라 영구 스킵, IO 오류는 다음 폴에 성공할 수 있어 재시도해야 하기 때문",
+        "Jackson이 두 예외를 구분해서 던지기 때문",
+        "성능 최적화를 위해"],
+    a: 1,
+    e: "<strong>매핑 오류(영구)</strong> — JSON 구조가 깨진 것이므로 다음에 읽어도 똑같이 실패합니다. 재시도하면 매 폴링마다 같은 에러가 쌓입니다 → 기록하고 종료.<br><br><strong>IO 오류(일시)</strong> — 파일 잠금, 일시적 권한 문제 등. 여기서 기록해버리면 <strong>정상 메일 하나가 영영 진단되지 않습니다</strong> → 기록하지 않고 return, 5초 뒤 재시도.<br><br>이 구분을 하지 않으면 둘 중 하나는 반드시 사고가 납니다."
+  },
+  {
+    q: "세션 파일을 임시 파일 + <code>ATOMIC_MOVE</code>로 쓰는 이유는?",
+    o: ["쓰기 속도가 빨라서",
+        "여러 프로세스가 동시에 쓸 수 있어서",
+        "쓰는 도중 프로세스가 죽어도 반쯤 쓰인 JSON이 남지 않게 하려고",
+        "파일 권한을 유지하기 위해"],
+    a: 2,
+    e: "파일에 직접 쓰다가 죽으면 JSON이 중간에 잘리고 그 세션의 모든 진단 결과가 날아갑니다. <code>ATOMIC_MOVE</code>(rename 시스템 콜)는 원자적이라 파일이 <strong>이전 버전이거나 새 버전</strong>이지 중간 상태가 될 수 없습니다.<br><br>여기에 한 겹 더 있습니다 — 그래도 손상 파일이 발견되면 <code>find()</code>가 warn 로그를 남기고 <strong>없는 것으로 취급</strong>합니다. 수집기 쪽도 같은 패턴이라, 앱은 <code>.</code>으로 시작하지 않는 디렉터리를 “항상 완결 상태”로 믿을 수 있습니다."
+  },
+  {
+    q: "실메일 모드에서 SPF 평가 도메인이 <code>From:</code> 도메인이 아닌 이유는?",
+    o: ["<code>From:</code> 도메인은 위조 가능하기 때문",
+        "RFC 7208이 SPF를 envelope sender(MAIL FROM) 기준으로 정의하고, 수신 서버도 그렇게 평가하기 때문",
+        "<code>From:</code> 헤더 파싱이 어렵기 때문",
+        "DMARC가 이미 <code>From:</code>을 검사하기 때문"],
+    a: 1,
+    e: "<code>From:</code>으로 평가하면 아래 같은 <strong>정상 구성이 FAIL로</strong> 나옵니다.<br><br><code>From: help@shop.co.kr</code> / <code>MAIL FROM: bounce@mail.shop.co.kr</code> ← 실제 SPF는 여기서 평가·통과<br><br>바운스 처리용 서브도메인 분리는 대형 발송의 표준 관행입니다. 한편 이 둘이 다르다는 사실 자체는 <strong>DMARC alignment</strong>에서 별도로 평가됩니다 — “SPF는 MAIL FROM으로, 정렬은 DMARC가”라는 역할 분담이죠."
+  },
+  {
+    q: "UI가 폴링할 때 전체를 다시 그리지 않고 <code>renderedMails</code> Set으로 새 카드만 추가하는 이유는?",
+    o: ["네트워크 트래픽을 줄이려고",
+        "사용자가 펼쳐놓은 아코디언 상태와 스크롤 위치가 4초마다 초기화되는 것을 막으려고",
+        "서버 부하를 줄이려고",
+        "카드 순서를 고정하려고"],
+    a: 1,
+    e: "검사 결과 카드는 <code>&lt;details&gt;</code> 아코디언입니다. 전체를 다시 렌더링하면 DOM이 새로 만들어지며 <strong>펼침 상태가 초기화되고 스크롤이 튑니다.</strong> 4초마다 읽던 자리를 잃는 화면은 쓸 수 없습니다.<br><br>부수 효과로 M8 QA에서 “수정 전 카드와 수정 후 카드를 한 화면에서 비교”하는 것도 가능해졌습니다."
+  },
+  {
+    g: "E. 원문 기반 검사 (5장)",
+    q: "DKIM 검사를 <code>checker-core</code>가 아닌 <code>checker-mail</code>에 둘 수 있었던 구조적 근거는?",
+    o: ["<code>checker-mail</code>이 Spring을 쓰기 때문",
+        "<code>Check</code>가 인터페이스라, 엔진은 구현체가 어느 모듈에서 왔는지 모르기 때문",
+        "<code>CheckEngine</code>이 <code>checker-mail</code>에 복사돼 있기 때문",
+        "jDKIM이 core에서도 사용 가능하기 때문"],
+    a: 1,
+    e: "<code>CheckEngine</code>은 <code>List&lt;Check&gt;</code>를 받을 뿐입니다. <code>checker-mail</code>이 <code>checker-core</code>에 의존하므로 인터페이스를 구현할 수 있고, <code>checker-web</code>이 두 모듈의 빈을 한 리스트로 조립하면 끝입니다.<br><br>배치를 나눈 이유는 jDKIM 의존성입니다 — core에 메일 파싱 라이브러리를 넣으면 “재사용 가능한 순수 DNS 검사 엔진”이라는 모듈 정체성이 흐려집니다."
+  },
+  {
+    q: "DKIM 공개키 조회를 위해 <code>DnsQueryServiceKeyRetriever</code>를 직접 구현한 이유는?",
+    o: ["jDKIM의 기본 조회가 느려서",
+        "jDKIM이 직접 네트워크를 치면 “검사는 <code>DnsQueryService</code>만 사용” 규칙이 깨지고 단위 테스트가 네트워크에 의존하게 되므로",
+        "jDKIM이 TXT 레코드를 지원하지 않아서",
+        "DQS 키를 주입해야 해서"],
+    a: 1,
+    e: "jDKIM의 기본 구현은 자체적으로 DNS를 조회합니다. 그대로 쓰면 단위 테스트가 실제 DNS에 의존하게 되죠.<br><br>인터페이스를 직접 구현해 조회를 <code>DnsQueryService</code>로 되돌린 결과, 테스트에서 <strong>RSA 키쌍을 만들고 → <code>DKIMSigner</code>로 진짜 서명하고 → DNS mock이 그 공개키를 돌려주게</strong> 해서 네트워크 없이 실제 서명 검증 경로 전체를 테스트할 수 있습니다."
+  },
+  {
+    q: "<code>HeaderQualityCheck</code>가 <code>To:</code> 누락은 WARN인데 <code>Message-ID</code> 누락은 FAIL인 이유는?",
+    o: ["<code>Message-ID</code>가 RFC 필수 헤더이고 <code>To:</code>는 아니어서",
+        "<code>Message-ID</code>는 정상 MTA라면 자동 부여되므로 부재가 서버 설정 문제 신호인 반면, <code>To:</code> 누락은 Bcc 단독 발송이라는 정당한 경우가 있어서",
+        "스팸 필터가 <code>Message-ID</code>만 검사해서",
+        "<code>To:</code>는 UI에서 별도 표시되기 때문"],
+    a: 1,
+    e: "이 검사의 기준선은 <strong>“정상 설정된 서버라면 자동으로 붙는가”</strong>입니다.<br><br>· <code>Message-ID</code>, <code>Date</code>는 제대로 된 submission 경로를 지나면 MTA가 붙여줍니다. 없다는 건 발송 경로 설정 문제의 신호 → FAIL<br>· <code>To:</code> 누락은 스팸 필터가 감점하지만 Bcc 단독 발송이라는 정당한 시나리오가 있습니다 → WARN<br><br>같은 기준으로 <code>List-Unsubscribe</code> 같은 <strong>콘텐츠 품질</strong> 헤더는 아예 검사하지 않습니다."
+  }
+];
+
+(function renderQuiz() {
+  const root = document.getElementById('quiz');
+  let answered = 0, correct = 0;
+  const total = QUESTIONS.length;
+  const scoreEl = document.getElementById('score');
+
+  QUESTIONS.forEach((item, qi) => {
+    if (item.g) {
+      const h = document.createElement('h3');
+      h.textContent = item.g;
+      root.appendChild(h);
+    }
+    const card = document.createElement('div');
+    card.className = 'q';
+
+    const head = document.createElement('div');
+    head.className = 'qh';
+    head.innerHTML = '<span class="n">Q' + (qi + 1) + '.</span>' + item.q;
+    card.appendChild(head);
+
+    const expl = document.createElement('div');
+    expl.className = 'expl';
+
+    item.o.forEach((text, oi) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'opt';
+      btn.innerHTML = '<b>(' + 'abcd'[oi] + ')</b> ' + text;
+      btn.addEventListener('click', () => {
+        const picked = oi === item.a;
+        answered++;
+        if (picked) correct++;
+        card.querySelectorAll('.opt').forEach((b, bi) => {
+          b.disabled = true;
+          if (bi === item.a) {
+            b.classList.add('correct');
+            b.insertAdjacentHTML('beforeend', '<span class="mark">✓</span>');
+          } else if (bi === oi) {
+            b.classList.add('wrong');
+            b.insertAdjacentHTML('beforeend', '<span class="mark">✗</span>');
+          }
+        });
+        expl.innerHTML =
+          '<div class="verdict ' + (picked ? 'ok">정답입니다' : 'no">아쉽네요 — 정답은 (' + 'abcd'[item.a] + ')') +
+          '</div><p>' + item.e + '</p>';
+        expl.classList.add('show');
+        scoreEl.textContent = '푼 문제 ' + answered + ' / ' + total + ' · 정답 ' + correct + '개'
+          + (answered === total ? ' — ' + verdictText(correct) : '');
+      });
+      card.appendChild(btn);
+    });
+
+    card.appendChild(expl);
+    root.appendChild(card);
+  });
+
+  function verdictText(n) {
+    if (n >= 18) return '저장소를 유지보수할 수 있는 수준입니다';
+    if (n >= 14) return '설계 의도를 이해했습니다';
+    if (n >= 10) return '큰 그림은 잡혔습니다 — 4·5장을 다시 읽어보세요';
+    return '0장 배경지식부터 다시 훑는 것을 권합니다';
+  }
+})();
+</script>
+
+</body>
+</html>
